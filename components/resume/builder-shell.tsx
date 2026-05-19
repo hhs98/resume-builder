@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation"
 import { Sparkles } from "lucide-react"
 
 import { Progress } from "@/components/ui/progress"
+import { useResumeDraft } from "@/hooks/use-resume-draft"
+import { computeResumeCompleteness } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
 
 export const BUILDER_STEPS = [
@@ -23,14 +25,9 @@ function normalizePath(path: string) {
 
 export function BuilderShell({ children }: { children: React.ReactNode }) {
   const pathname = normalizePath(usePathname() ?? "")
+  const { draft } = useResumeDraft()
 
-  const stepIndex = BUILDER_STEPS.findIndex(
-    (s) => normalizePath(s.href) === pathname
-  )
-  const completenessPercent =
-    stepIndex === -1
-      ? 0
-      : Math.round(((stepIndex + 1) / BUILDER_STEPS.length) * 100)
+  const completenessPercent = computeResumeCompleteness(draft)
 
   return (
     <div className="flex min-h-svh w-full bg-background">

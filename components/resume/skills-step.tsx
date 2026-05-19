@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useResumeDraft } from "@/hooks/use-resume-draft"
+import type { ResumeSkill } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
 
 const POPULAR_TITLES_INITIAL = [
@@ -50,12 +52,6 @@ const PREWRITTEN_EXAMPLES = [
   "Adaptability in fast-paced settings",
 ] as const
 
-type SkillEntry = {
-  id: string
-  name: string
-  rating: number
-}
-
 function newSkillId() {
   return crypto.randomUUID()
 }
@@ -90,10 +86,15 @@ function StarRating({
 }
 
 export function SkillsStep() {
+  const { draft, patchDraft } = useResumeDraft()
+  const skills = draft.skills
   const [search, setSearch] = useState("")
   const [popularExpanded, setPopularExpanded] = useState(false)
   const [customDraft, setCustomDraft] = useState("")
-  const [skills, setSkills] = useState<SkillEntry[]>([])
+
+  function setSkills(next: ResumeSkill[]) {
+    patchDraft({ skills: next })
+  }
 
   const filteredExamples = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -109,20 +110,18 @@ export function SkillsStep() {
   function addSkill(name: string) {
     const trimmed = name.trim()
     if (!trimmed) return
-    setSkills((prev) => {
-      if (prev.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) {
-        return prev
-      }
-      return [...prev, { id: newSkillId(), name: trimmed, rating: 3 }]
-    })
+    if (skills.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) {
+      return
+    }
+    setSkills([...skills, { id: newSkillId(), name: trimmed, rating: 3 }])
   }
 
   function removeSkill(id: string) {
-    setSkills((prev) => prev.filter((s) => s.id !== id))
+    setSkills(skills.filter((s) => s.id !== id))
   }
 
   function setRating(id: string, rating: number) {
-    setSkills((prev) => prev.map((s) => (s.id === id ? { ...s, rating } : s)))
+    setSkills(skills.map((s) => (s.id === id ? { ...s, rating } : s)))
   }
 
   function addCustomFromTextarea() {
@@ -130,17 +129,15 @@ export function SkillsStep() {
       .split(/[,;\n]+/)
       .map((p) => p.trim())
       .filter(Boolean)
-    setSkills((prev) => {
-      const existing = new Set(prev.map((s) => s.name.toLowerCase()))
-      const next = [...prev]
-      for (const p of parts) {
-        const lower = p.toLowerCase()
-        if (existing.has(lower)) continue
-        existing.add(lower)
-        next.push({ id: newSkillId(), name: p, rating: 3 })
-      }
-      return next
-    })
+    const existing = new Set(skills.map((s) => s.name.toLowerCase()))
+    const next = [...skills]
+    for (const p of parts) {
+      const lower = p.toLowerCase()
+      if (existing.has(lower)) continue
+      existing.add(lower)
+      next.push({ id: newSkillId(), name: p, rating: 3 })
+    }
+    setSkills(next)
     setCustomDraft("")
   }
 

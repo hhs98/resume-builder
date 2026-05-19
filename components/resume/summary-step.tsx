@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useResumeDraft } from "@/hooks/use-resume-draft"
 
 const POPULAR_TITLES_INITIAL = [
   "Cashier",
@@ -45,9 +46,10 @@ const SUMMARY_EXAMPLES = [
 ] as const
 
 export function SummaryStep() {
+  const { draft, patchDraft } = useResumeDraft()
+  const summary = draft.summary
   const [search, setSearch] = useState("")
   const [popularExpanded, setPopularExpanded] = useState(false)
-  const [summary, setSummary] = useState("")
 
   const filteredExamples = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -56,10 +58,8 @@ export function SummaryStep() {
   }, [search])
 
   function appendExample(text: string) {
-    setSummary((prev) => {
-      const t = prev.trim()
-      return t ? `${t}\n\n${text}` : text
-    })
+    const t = summary.trim()
+    patchDraft({ summary: t ? `${t}\n\n${text}` : text })
   }
 
   function applyPopularTitle(title: string) {
@@ -200,7 +200,7 @@ export function SummaryStep() {
               placeholder="Write your summary here."
               aria-label="Professional summary"
               value={summary}
-              onChange={(e) => setSummary(e.target.value)}
+              onChange={(e) => patchDraft({ summary: e.target.value })}
               rows={10}
             />
           </section>

@@ -1,7 +1,6 @@
 "use client"
 
 import type { HTMLInputTypeAttribute } from "react"
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Lightbulb, UserRound } from "lucide-react"
 
@@ -15,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { cn } from "@/lib/utils"
 
 const BD_DIVISIONS = [
@@ -35,6 +35,8 @@ function FormField({
   placeholder,
   type = "text",
   autoComplete,
+  value,
+  onChange,
 }: {
   id: string
   label: string
@@ -42,6 +44,8 @@ function FormField({
   placeholder: string
   type?: HTMLInputTypeAttribute
   autoComplete?: string
+  value: string
+  onChange: (value: string) => void
 }) {
   return (
     <Field>
@@ -61,25 +65,31 @@ function FormField({
         required={required}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
       />
     </Field>
   )
 }
 
 export function NewContactStep() {
-  const [division, setDivision] = useState<string | undefined>(undefined)
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const { draft, patchDraft } = useResumeDraft()
+  const contact = draft.contact
 
-  useEffect(() => {
-    return () => {
-      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
-    }
-  }, [photoPreviewUrl])
+  function updateContact(patch: Partial<typeof contact>) {
+    patchDraft({ contact: { ...contact, ...patch } })
+  }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file?.type.startsWith("image/")) return
-    setPhotoPreviewUrl(URL.createObjectURL(file))
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateContact({ photoDataUrl: reader.result })
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -109,13 +119,13 @@ export function NewContactStep() {
           <div
             className={cn(
               "relative flex aspect-[4/5] w-full max-w-[220px] flex-col items-center justify-center gap-3 overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 px-4 text-center lg:max-w-none",
-              photoPreviewUrl && "border-solid p-0"
+              contact.photoDataUrl && "border-solid p-0"
             )}
           >
-            {photoPreviewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- blob URL preview
+            {contact.photoDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- data URL preview
               <img
-                src={photoPreviewUrl}
+                src={contact.photoDataUrl}
                 alt="Profile photo preview"
                 className="size-full object-cover"
               />
@@ -163,12 +173,16 @@ export function NewContactStep() {
                 label="Name"
                 placeholder="Rahat"
                 autoComplete="given-name"
+                value={contact.givenName}
+                onChange={(v) => updateContact({ givenName: v })}
               />
               <FormField
                 id="familyName"
                 label="Surname"
                 placeholder="Hossain"
                 autoComplete="family-name"
+                value={contact.familyName}
+                onChange={(v) => updateContact({ familyName: v })}
               />
             </div>
 
@@ -177,6 +191,8 @@ export function NewContactStep() {
               label="Profession"
               placeholder="Senior Sales Manager"
               autoComplete="organization-title"
+              value={contact.profession}
+              onChange={(v) => updateContact({ profession: v })}
             />
 
             <div className="grid gap-6 sm:grid-cols-2">
@@ -185,18 +201,25 @@ export function NewContactStep() {
                 label="City"
                 placeholder="Chittagong"
                 autoComplete="address-level2"
+                value={contact.city}
+                onChange={(v) => updateContact({ city: v })}
               />
               <FormField
                 id="postalCode"
                 label="Zip Code"
                 placeholder="4000"
                 autoComplete="postal-code"
+                value={contact.postalCode}
+                onChange={(v) => updateContact({ postalCode: v })}
               />
             </div>
 
             <Field>
               <FieldLabel htmlFor="division">Division</FieldLabel>
-              <Select value={division} onValueChange={setDivision}>
+              <Select
+                value={contact.division || undefined}
+                onValueChange={(v) => updateContact({ division: v })}
+              >
                 <SelectTrigger id="division" className="w-full">
                   <SelectValue placeholder="Select division" />
                 </SelectTrigger>
@@ -208,7 +231,11 @@ export function NewContactStep() {
                   ))}
                 </SelectContent>
               </Select>
-              <input type="hidden" name="division" value={division ?? ""} />
+              <input
+                type="hidden"
+                name="division"
+                value={contact.division}
+              />
             </Field>
 
             <FormField
@@ -216,6 +243,8 @@ export function NewContactStep() {
               label="Phone"
               placeholder="01712-345678"
               autoComplete="tel"
+              value={contact.phone}
+              onChange={(v) => updateContact({ phone: v })}
             />
 
             <FormField
@@ -225,6 +254,8 @@ export function NewContactStep() {
               type="email"
               placeholder="rahat.hossain@email.com"
               autoComplete="email"
+              value={contact.email}
+              onChange={(v) => updateContact({ email: v })}
             />
           </form>
 

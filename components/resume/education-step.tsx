@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { Lightbulb } from "lucide-react"
 
@@ -15,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { cn } from "@/lib/utils"
 import { MONTHS } from "@/lib/resume-form-constants"
 
@@ -86,12 +86,16 @@ function FormField({
   required,
   placeholder,
   autoComplete,
+  value,
+  onChange,
 }: {
   id: string
   label: string
   required?: boolean
   placeholder: string
   autoComplete?: string
+  value: string
+  onChange: (value: string) => void
 }) {
   return (
     <Field>
@@ -110,39 +114,42 @@ function FormField({
         required={required}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
       />
     </Field>
   )
 }
 
 export function EducationStep() {
-  const [educationLevel, setEducationLevel] = useState<string | undefined>(
-    undefined
-  )
-  const [degree, setDegree] = useState<string | undefined>(undefined)
-  const [graduationMonth, setGraduationMonth] = useState<string | undefined>(
-    undefined
-  )
-  const [graduationYear, setGraduationYear] = useState<string | undefined>(
-    undefined
-  )
+  const { draft, patchDraft } = useResumeDraft()
+  const education = draft.education
+  const educationLevel = education.educationLevel || undefined
+
+  function updateEducation(patch: Partial<typeof education>) {
+    patchDraft({ education: { ...education, ...patch } })
+  }
 
   function handleEducationLevelChange(value: string) {
-    setEducationLevel((prev) => {
-      if (prev !== value) {
-        setDegree(undefined)
-        setGraduationMonth(undefined)
-        setGraduationYear(undefined)
-      }
-      return value
-    })
+    if (education.educationLevel !== value) {
+      updateEducation({
+        educationLevel: value,
+        degree: "",
+        graduationMonth: "",
+        graduationYear: "",
+      })
+    } else {
+      updateEducation({ educationLevel: value })
+    }
   }
 
   function handleResetEducationLevel() {
-    setEducationLevel(undefined)
-    setDegree(undefined)
-    setGraduationMonth(undefined)
-    setGraduationYear(undefined)
+    updateEducation({
+      educationLevel: "",
+      degree: "",
+      graduationMonth: "",
+      graduationYear: "",
+    })
   }
 
   const selectedLevelLabel = EDUCATION_LEVELS.find(
@@ -241,6 +248,8 @@ export function EducationStep() {
                   required
                   placeholder="School Name"
                   autoComplete="organization"
+                  value={education.institution}
+                  onChange={(v) => updateEducation({ institution: v })}
                 />
 
                 <FormField
@@ -248,13 +257,20 @@ export function EducationStep() {
                   label="Institution Location"
                   placeholder="Chittagong"
                   autoComplete="address-level2"
+                  value={education.institutionLocation}
+                  onChange={(v) =>
+                    updateEducation({ institutionLocation: v })
+                  }
                 />
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <Field>
                   <FieldLabel htmlFor="degree">Degree</FieldLabel>
-                  <Select value={degree} onValueChange={setDegree}>
+                  <Select
+                    value={education.degree || undefined}
+                    onValueChange={(v) => updateEducation({ degree: v })}
+                  >
                     <SelectTrigger id="degree" className="w-full">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
@@ -266,7 +282,11 @@ export function EducationStep() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <input type="hidden" name="degree" value={degree ?? ""} />
+                  <input
+                    type="hidden"
+                    name="degree"
+                    value={education.degree}
+                  />
                 </Field>
                 <div className="hidden sm:block" aria-hidden />
               </div>
@@ -277,6 +297,8 @@ export function EducationStep() {
                   label="Field of Study"
                   placeholder="Accountant"
                   autoComplete="off"
+                  value={education.fieldOfStudy}
+                  onChange={(v) => updateEducation({ fieldOfStudy: v })}
                 />
 
                 <div>
@@ -287,8 +309,10 @@ export function EducationStep() {
                     <div className="grid grid-cols-2 gap-3">
                       <Field>
                         <Select
-                          value={graduationMonth}
-                          onValueChange={setGraduationMonth}
+                          value={education.graduationMonth || undefined}
+                          onValueChange={(v) =>
+                            updateEducation({ graduationMonth: v })
+                          }
                         >
                           <SelectTrigger
                             id="graduationMonth"
@@ -308,13 +332,15 @@ export function EducationStep() {
                         <input
                           type="hidden"
                           name="graduationMonth"
-                          value={graduationMonth ?? ""}
+                          value={education.graduationMonth}
                         />
                       </Field>
                       <Field>
                         <Select
-                          value={graduationYear}
-                          onValueChange={setGraduationYear}
+                          value={education.graduationYear || undefined}
+                          onValueChange={(v) =>
+                            updateEducation({ graduationYear: v })
+                          }
                         >
                           <SelectTrigger
                             id="graduationYear"
@@ -334,7 +360,7 @@ export function EducationStep() {
                         <input
                           type="hidden"
                           name="graduationYear"
-                          value={graduationYear ?? ""}
+                          value={education.graduationYear}
                         />
                       </Field>
                     </div>

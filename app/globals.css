@@ -127,3 +127,27 @@
     @apply font-sans;
     }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #resume-print-preview,
+  #resume-print-preview * {
+    visibility: visible;
+  }
+
+  #resume-print-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    transform: none !important;
+  }
+
+  .resume-preview {
+    box-shadow: none !important;
+    max-width: none !important;
+  }
+}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId } from "react"
 import Link from "next/link"
 import { Lightbulb } from "lucide-react"
 
@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { MONTHS } from "@/lib/resume-form-constants"
 
 const YEAR_OPTIONS = (() => {
@@ -31,12 +32,16 @@ function FormField({
   required,
   placeholder,
   autoComplete,
+  value,
+  onChange,
 }: {
   id: string
   label: string
   required?: boolean
   placeholder: string
   autoComplete?: string
+  value: string
+  onChange: (value: string) => void
 }) {
   return (
     <Field>
@@ -55,6 +60,8 @@ function FormField({
         required={required}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
       />
     </Field>
   )
@@ -62,12 +69,12 @@ function FormField({
 
 export function WorkHistoryStep() {
   const currentJobId = useId()
-  const [remote, setRemote] = useState(false)
-  const [currentJob, setCurrentJob] = useState(false)
-  const [startMonth, setStartMonth] = useState<string | undefined>(undefined)
-  const [startYear, setStartYear] = useState<string | undefined>(undefined)
-  const [endMonth, setEndMonth] = useState<string | undefined>(undefined)
-  const [endYear, setEndYear] = useState<string | undefined>(undefined)
+  const { draft, patchDraft } = useResumeDraft()
+  const work = draft.work
+
+  function updateWork(patch: Partial<typeof work>) {
+    patchDraft({ work: { ...work, ...patch } })
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10 md:px-10 md:py-14">
@@ -103,6 +110,8 @@ export function WorkHistoryStep() {
             required
             placeholder="Sales Manager"
             autoComplete="organization-title"
+            value={work.jobTitle}
+            onChange={(v) => updateWork({ jobTitle: v })}
           />
 
           <FormField
@@ -111,6 +120,8 @@ export function WorkHistoryStep() {
             required
             placeholder="Dhaka IT Solutions"
             autoComplete="organization"
+            value={work.employer}
+            onChange={(v) => updateWork({ employer: v })}
           />
 
           <FormField
@@ -118,18 +129,24 @@ export function WorkHistoryStep() {
             label="Location"
             placeholder="Dhaka"
             autoComplete="address-level2"
+            value={work.location}
+            onChange={(v) => updateWork({ location: v })}
           />
 
           <Field orientation="horizontal" className="items-center gap-3">
             <Checkbox
               id="remote"
-              checked={remote}
-              onCheckedChange={(v) => setRemote(v === true)}
+              checked={work.remote}
+              onCheckedChange={(v) => updateWork({ remote: v === true })}
             />
             <FieldLabel htmlFor="remote" className="font-normal">
               Remote
             </FieldLabel>
-            <input type="hidden" name="remote" value={remote ? "on" : ""} />
+            <input
+              type="hidden"
+              name="remote"
+              value={work.remote ? "on" : ""}
+            />
           </Field>
 
           <fieldset className="min-w-0 space-y-3 border-0 p-0">
@@ -138,7 +155,10 @@ export function WorkHistoryStep() {
             </legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field>
-                <Select value={startMonth} onValueChange={setStartMonth}>
+                <Select
+                  value={work.startMonth || undefined}
+                  onValueChange={(v) => updateWork({ startMonth: v })}
+                >
                   <SelectTrigger
                     id="startMonth"
                     className="w-full"
@@ -157,11 +177,14 @@ export function WorkHistoryStep() {
                 <input
                   type="hidden"
                   name="startMonth"
-                  value={startMonth ?? ""}
+                  value={work.startMonth}
                 />
               </Field>
               <Field>
-                <Select value={startYear} onValueChange={setStartYear}>
+                <Select
+                  value={work.startYear || undefined}
+                  onValueChange={(v) => updateWork({ startYear: v })}
+                >
                   <SelectTrigger
                     id="startYear"
                     className="w-full"
@@ -177,7 +200,11 @@ export function WorkHistoryStep() {
                     ))}
                   </SelectContent>
                 </Select>
-                <input type="hidden" name="startYear" value={startYear ?? ""} />
+                <input
+                  type="hidden"
+                  name="startYear"
+                  value={work.startYear}
+                />
               </Field>
             </div>
           </fieldset>
@@ -189,9 +216,9 @@ export function WorkHistoryStep() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field>
                 <Select
-                  value={endMonth}
-                  onValueChange={setEndMonth}
-                  disabled={currentJob}
+                  value={work.endMonth || undefined}
+                  onValueChange={(v) => updateWork({ endMonth: v })}
+                  disabled={work.currentJob}
                 >
                   <SelectTrigger
                     id="endMonth"
@@ -211,15 +238,15 @@ export function WorkHistoryStep() {
                 <input
                   type="hidden"
                   name="endMonth"
-                  value={endMonth ?? ""}
-                  disabled={currentJob}
+                  value={work.endMonth}
+                  disabled={work.currentJob}
                 />
               </Field>
               <Field>
                 <Select
-                  value={endYear}
-                  onValueChange={setEndYear}
-                  disabled={currentJob}
+                  value={work.endYear || undefined}
+                  onValueChange={(v) => updateWork({ endYear: v })}
+                  disabled={work.currentJob}
                 >
                   <SelectTrigger
                     id="endYear"
@@ -239,8 +266,8 @@ export function WorkHistoryStep() {
                 <input
                   type="hidden"
                   name="endYear"
-                  value={endYear ?? ""}
-                  disabled={currentJob}
+                  value={work.endYear}
+                  disabled={work.currentJob}
                 />
               </Field>
             </div>
@@ -249,13 +276,17 @@ export function WorkHistoryStep() {
           <Field orientation="horizontal" className="items-center gap-3">
             <Checkbox
               id={currentJobId}
-              checked={currentJob}
+              checked={work.currentJob}
               onCheckedChange={(v) => {
                 const checked = v === true
-                setCurrentJob(checked)
                 if (checked) {
-                  setEndMonth(undefined)
-                  setEndYear(undefined)
+                  updateWork({
+                    currentJob: true,
+                    endMonth: "",
+                    endYear: "",
+                  })
+                } else {
+                  updateWork({ currentJob: false })
                 }
               }}
             />
@@ -265,7 +296,7 @@ export function WorkHistoryStep() {
             <input
               type="hidden"
               name="currentJob"
-              value={currentJob ? "on" : ""}
+              value={work.currentJob ? "on" : ""}
             />
           </Field>
         </form>
