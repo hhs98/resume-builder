@@ -1,15 +1,25 @@
 import { MONTHS } from "@/lib/resume-form-constants"
 
-export type ResumeTemplateId =
-  | "classic"
-  | "modern"
-  | "minimal"
-  | "executive"
+export type ResumeTemplateId = "classic" | "modern" | "minimal" | "executive"
 
 export type ResumeSkill = {
   id: string
   name: string
   rating: number
+}
+
+export type WorkHistoryItem = {
+  id: string
+  jobTitle: string
+  employer: string
+  location: string
+  remote: boolean
+  startMonth: string
+  startYear: string
+  endMonth: string
+  endYear: string
+  currentJob: boolean
+  responsibilities: string
 }
 
 export type ResumeDraft = {
@@ -25,17 +35,7 @@ export type ResumeDraft = {
     email: string
     photoDataUrl: string | null
   }
-  work: {
-    jobTitle: string
-    employer: string
-    location: string
-    remote: boolean
-    startMonth: string
-    startYear: string
-    endMonth: string
-    endYear: string
-    currentJob: boolean
-  }
+  workHistory: WorkHistoryItem[]
   education: {
     educationLevel: string
     institution: string
@@ -64,17 +64,21 @@ export const EMPTY_RESUME_DRAFT: ResumeDraft = {
     email: "",
     photoDataUrl: null,
   },
-  work: {
-    jobTitle: "",
-    employer: "",
-    location: "",
-    remote: false,
-    startMonth: "",
-    startYear: "",
-    endMonth: "",
-    endYear: "",
-    currentJob: false,
-  },
+  workHistory: [
+    {
+      id: crypto.randomUUID(),
+      jobTitle: "",
+      employer: "",
+      location: "",
+      remote: false,
+      startMonth: "",
+      startYear: "",
+      endMonth: "",
+      endYear: "",
+      currentJob: false,
+      responsibilities: "",
+    },
+  ],
   education: {
     educationLevel: "",
     institution: "",
@@ -159,7 +163,7 @@ export function mergeResumeDraft(
     ...patch,
     templateId: patch.templateId ?? base.templateId,
     contact: { ...base.contact, ...patch.contact },
-    work: { ...base.work, ...patch.work },
+    workHistory: patch.workHistory ?? base.workHistory,
     education: { ...base.education, ...patch.education },
     skills: patch.skills ?? base.skills,
     summary: patch.summary ?? base.summary,
@@ -191,13 +195,14 @@ export function formatMonthYear(month?: string, year?: string) {
   return year || label || ""
 }
 
-export function formatWorkDates(draft: ResumeDraft) {
-  const start = formatMonthYear(draft.work.startMonth, draft.work.startYear)
-  const end = draft.work.currentJob
+export function formatWorkDates(work: WorkHistoryItem) {
+  const start = formatMonthYear(work.startMonth, work.startYear)
+
+  const end = work.currentJob
     ? "Present"
-    : formatMonthYear(draft.work.endMonth, draft.work.endYear)
-  if (start && end) return `${start} – ${end}`
-  return start || end
+    : formatMonthYear(work.endMonth, work.endYear)
+
+  return [start, end].filter(Boolean).join(" - ")
 }
 
 /** Compact range for executive template (e.g. 2023-12 - 2025-12). */
@@ -207,16 +212,36 @@ export function formatCompactMonthYear(month?: string, year?: string) {
   return year || month || ""
 }
 
-export function formatWorkDatesCompact(draft: ResumeDraft) {
-  const start = formatCompactMonthYear(
-    draft.work.startMonth,
-    draft.work.startYear
-  )
-  const end = draft.work.currentJob
+export function formatWorkDatesCompact(
+  draft: ResumeDraft,
+  showDates: boolean = true
+) {
+  if (!showDates) return ""
+
+  const history = draft.workHistory ?? []
+  if (!history.length) return ""
+
+  const item = history[0]
+
+  const start = formatCompactMonthYear(item?.startMonth, item?.startYear)
+
+  const end = item?.currentJob
     ? "Present"
-    : formatCompactMonthYear(draft.work.endMonth, draft.work.endYear)
+    : formatCompactMonthYear(item?.endMonth, item?.endYear)
+
   if (start && end) return `${start} - ${end}`
-  return start || end
+  return start || end || ""
+}
+
+export function formatWorkItemDates(work: WorkHistoryItem) {
+  const start = formatCompactMonthYear(work.startMonth, work.startYear)
+
+  const end = work.currentJob
+    ? "Present"
+    : formatCompactMonthYear(work.endMonth, work.endYear)
+
+  if (start && end) return `${start} - ${end}`
+  return start || end || ""
 }
 
 export function formatGraduationCompact(draft: ResumeDraft) {
@@ -237,11 +262,12 @@ export function getEducationLevelLabel(value: string) {
 export function computeResumeCompleteness(draft: ResumeDraft): number {
   const checks = [
     Boolean(draft.contact.email.trim()),
-    Boolean(
-      draft.contact.givenName.trim() || draft.contact.familyName.trim()
-    ),
+    Boolean(draft.contact.givenName.trim() || draft.contact.familyName.trim()),
     Boolean(draft.contact.phone.trim() || draft.contact.profession.trim()),
-    Boolean(draft.work.jobTitle.trim() && draft.work.employer.trim()),
+    Boolean(
+      draft.workHistory[0].jobTitle.trim() &&
+      draft.workHistory[0].employer.trim()
+    ),
     Boolean(draft.education.educationLevel.trim()),
     draft.skills.length > 0,
     draft.summary.trim().length >= 40,
@@ -251,20 +277,34 @@ export function computeResumeCompleteness(draft: ResumeDraft): number {
 }
 
 export const FINALIZE_SECTIONS = [
-  { href: "/new", label: "Heading", isComplete: (d: ResumeDraft) =>
+  {
+    href: "/new",
+    label: "Heading",
+    isComplete: (d: ResumeDraft) =>
       Boolean(d.contact.email.trim()) &&
       Boolean(d.contact.givenName.trim() || d.contact.familyName.trim()),
   },
-  { href: "/new/work-history", label: "Work history", isComplete: (d: ResumeDraft) =>
-      Boolean(d.work.jobTitle.trim() && d.work.employer.trim()),
+  {
+    href: "/new/work-history",
+    label: "Work history",
+    isComplete: (d: ResumeDraft) =>
+      Boolean(
+        d.workHistory[0].jobTitle.trim() && d.workHistory[0].employer.trim()
+      ),
   },
-  { href: "/new/education", label: "Education", isComplete: (d: ResumeDraft) =>
-      Boolean(d.education.educationLevel.trim()),
+  {
+    href: "/new/education",
+    label: "Education",
+    isComplete: (d: ResumeDraft) => Boolean(d.education.educationLevel.trim()),
   },
-  { href: "/new/skills", label: "Skills", isComplete: (d: ResumeDraft) =>
-      d.skills.length > 0,
+  {
+    href: "/new/skills",
+    label: "Skills",
+    isComplete: (d: ResumeDraft) => d.skills.length > 0,
   },
-  { href: "/new/summary", label: "Summary", isComplete: (d: ResumeDraft) =>
-      d.summary.trim().length >= 40,
+  {
+    href: "/new/summary",
+    label: "Summary",
+    isComplete: (d: ResumeDraft) => d.summary.trim().length >= 40,
   },
 ] as const

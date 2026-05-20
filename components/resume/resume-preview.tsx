@@ -29,23 +29,14 @@ export function ResumePreview({
   className,
   id,
 }: ResumePreviewProps) {
+  // console.log(draft)
   const name = getFullName(draft) || "Your name"
   const location = getContactLocation(draft)
-  const contactLine = [
-    draft.contact.email,
-    draft.contact.phone,
-    location,
-  ]
+  const contactLine = [draft.contact.email, draft.contact.phone, location]
     .map((s) => s.trim())
     .filter(Boolean)
 
-  const workDates = formatWorkDates(draft)
-  const workLocation = [
-    draft.work.location,
-    draft.work.remote ? "Remote" : "",
-  ]
-    .filter(Boolean)
-    .join(" · ")
+  const workHistory = draft.workHistory || []
 
   const gradDate = formatMonthYear(
     draft.education.graduationMonth,
@@ -60,11 +51,16 @@ export function ResumePreview({
     draft.education.institutionLocation,
   ].filter((s) => s.trim())
 
-  const hasWork =
-    draft.work.jobTitle.trim() ||
-    draft.work.employer.trim() ||
-    workDates ||
-    workLocation
+  const hasWork = workHistory.some(
+    (work) =>
+      work.jobTitle.trim() ||
+      work.employer.trim() ||
+      work.responsibilities.trim() ||
+      work.startMonth ||
+      work.startYear ||
+      work.endMonth ||
+      work.endYear
+  )
 
   const hasEducation =
     draft.education.educationLevel.trim() || educationLines.length > 0
@@ -108,15 +104,11 @@ export function ResumePreview({
           <img
             src={draft.contact.photoDataUrl}
             alt=""
-            className={cn(
-              "size-20 shrink-0 rounded-full object-cover"
-            )}
+            className={cn("size-20 shrink-0 rounded-full object-cover")}
           />
         ) : null}
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {name}
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
           {draft.contact.profession.trim() ? (
             <p className="mt-1 text-sm font-medium text-neutral-600">
               {draft.contact.profession}
@@ -147,20 +139,52 @@ export function ResumePreview({
 
       {hasWork ? (
         <PreviewSection title="Experience">
-          <div className="space-y-1">
-            {draft.work.jobTitle.trim() ? (
-              <p className="font-semibold text-neutral-900">
-                {draft.work.jobTitle}
-              </p>
-            ) : null}
-            {draft.work.employer.trim() ? (
-              <p className="text-neutral-700">{draft.work.employer}</p>
-            ) : null}
-            {(workDates || workLocation) && (
-              <p className="text-[10px] text-neutral-500">
-                {[workDates, workLocation].filter(Boolean).join(" · ")}
-              </p>
-            )}
+          <div className="space-y-5">
+            {workHistory.map((work) => {
+              const workDates = formatWorkDates(work)
+
+              const workLocation = [work.location, work.remote ? "Remote" : ""]
+                .filter(Boolean)
+                .join(" · ")
+
+              const hasItem =
+                work.jobTitle.trim() ||
+                work.employer.trim() ||
+                work.responsibilities.trim() ||
+                workDates ||
+                workLocation
+
+              if (!hasItem) return null
+
+              return (
+                <div
+                  key={work.id}
+                  className="space-y-1 border-b border-neutral-200 pb-4 last:border-b-0 last:pb-0"
+                >
+                  {work.jobTitle.trim() ? (
+                    <p className="font-semibold text-neutral-900">
+                      {work.jobTitle}
+                    </p>
+                  ) : null}
+
+                  {work.employer.trim() ? (
+                    <p className="text-neutral-700">{work.employer}</p>
+                  ) : null}
+
+                  {(workDates || workLocation) && (
+                    <p className="text-[10px] text-neutral-500">
+                      {[workDates, workLocation].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+
+                  {work.responsibilities.trim() ? (
+                    <p className="whitespace-pre-wrap text-neutral-700">
+                      {work.responsibilities}
+                    </p>
+                  ) : null}
+                </div>
+              )
+            })}
           </div>
         </PreviewSection>
       ) : null}
@@ -214,15 +238,9 @@ function PreviewSection({
   children: React.ReactNode
 }) {
   return (
-    <section
-      className={cn(
-        "mb-6 last:mb-0"
-      )}
-    >
+    <section className={cn("mb-6 last:mb-0")}>
       <h2
-        className={cn(
-          "mb-2 text-[10px] font-bold tracking-widest uppercase"
-        )}
+        className={cn("mb-2 text-[10px] font-bold tracking-widest uppercase")}
       >
         {title}
       </h2>

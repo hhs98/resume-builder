@@ -3,6 +3,7 @@
 import {
   formatGraduationCompact,
   formatWorkDatesCompact,
+  formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
@@ -15,7 +16,9 @@ const RED = "#c41e3a"
 const PINK = "#f8d4da"
 
 type ClassicRedPreviewProps = {
-  draft: ResumeDraft
+  draft: ResumeDraft & {
+    workHistory?: any[]
+  }
   className?: string
   id?: string
 }
@@ -27,8 +30,9 @@ export function ClassicRedPreview({
 }: ClassicRedPreviewProps) {
   const name = (getFullName(draft) || "Your name").toUpperCase()
   const address = getContactLocation(draft)
-  const workDates = formatWorkDatesCompact(draft)
   const gradDate = formatGraduationCompact(draft)
+
+  const workHistory = draft.workHistory || []
 
   const educationDegreeLine = [
     draft.education.degree.trim()
@@ -47,25 +51,13 @@ export function ClassicRedPreview({
     .filter((s) => s.trim())
     .join(", ")
 
-  const workTitleLine = [draft.work.jobTitle.trim(), workDates]
-    .filter(Boolean)
-    .join(", ")
-
-  const workCompanyLine = [
-    draft.work.employer,
-    [draft.work.location, draft.work.remote ? "Remote" : ""]
-      .filter(Boolean)
-      .join(", "),
-  ]
-    .filter((s) => s.trim())
-    .join(", ")
-
   const hasContact =
     address || draft.contact.phone.trim() || draft.contact.email.trim()
+
   const hasSummary = draft.summary.trim().length > 0
   const hasEducation = educationDegreeLine.trim() || educationOrgLine.trim()
   const hasSkills = draft.skills.length > 0
-  const hasWork = workTitleLine.trim() || workCompanyLine.trim()
+  const hasWork = workHistory.length > 0
 
   const isEmpty =
     !hasContact && !hasSummary && !hasEducation && !hasSkills && !hasWork
@@ -82,9 +74,9 @@ export function ClassicRedPreview({
     >
       <div className="h-3 w-full" style={{ backgroundColor: PINK }} />
 
+      {/* HEADER */}
       <header className="flex flex-col items-center px-10 pt-6 pb-2 text-center">
         {draft.contact.photoDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data URL preview
           <img
             src={draft.contact.photoDataUrl}
             alt=""
@@ -102,6 +94,7 @@ export function ClassicRedPreview({
               .slice(0, 2)}
           </span>
         )}
+
         <h1
           className="mt-4 text-2xl font-bold tracking-[0.2em]"
           style={{ color: RED }}
@@ -113,6 +106,7 @@ export function ClassicRedPreview({
       <RedDivider className="mx-10" />
 
       <div className="space-y-0 px-10 pb-8">
+        {/* CONTACT */}
         {hasContact ? (
           <section>
             <SectionHeader title="Contact" />
@@ -125,6 +119,7 @@ export function ClassicRedPreview({
               ) : (
                 <span />
               )}
+
               {draft.contact.phone.trim() ? (
                 <div>
                   <p className="font-bold text-neutral-900">Phone</p>
@@ -135,6 +130,7 @@ export function ClassicRedPreview({
               ) : (
                 <span />
               )}
+
               {draft.contact.email.trim() ? (
                 <div>
                   <p className="font-bold text-neutral-900">Email</p>
@@ -150,16 +146,18 @@ export function ClassicRedPreview({
           </section>
         ) : null}
 
+        {/* SUMMARY */}
         {hasSummary ? (
           <section>
             <SectionHeader title="Resume Objective" />
-            <p className="mt-3 whitespace-pre-wrap text-[11px] leading-relaxed text-neutral-800">
+            <p className="mt-3 text-[11px] leading-relaxed whitespace-pre-wrap text-neutral-800">
               {draft.summary.trim()}
             </p>
             <RedDivider />
           </section>
         ) : null}
 
+        {/* EDUCATION */}
         {hasEducation ? (
           <section>
             <SectionHeader title="Education" />
@@ -169,6 +167,7 @@ export function ClassicRedPreview({
                   {educationDegreeLine}
                 </p>
               ) : null}
+
               {educationOrgLine ? (
                 <p className="text-[11px] font-bold text-neutral-900">
                   {educationOrgLine}
@@ -179,6 +178,7 @@ export function ClassicRedPreview({
           </section>
         ) : null}
 
+        {/* SKILLS */}
         {hasSkills ? (
           <section>
             <SectionHeader title="Skills" />
@@ -199,22 +199,58 @@ export function ClassicRedPreview({
           </section>
         ) : null}
 
+        {/* WORK HISTORY (FIXED MULTI) */}
         {hasWork ? (
-          <section>
-            <SectionHeader title="Work History" />
-            <div className="mt-3 space-y-1">
-              {workTitleLine ? (
-                <p className="text-[11px] text-neutral-800">{workTitleLine}</p>
-              ) : null}
-              {workCompanyLine ? (
-                <p className="text-[11px] font-bold text-neutral-900">
-                  {workCompanyLine}
-                </p>
-              ) : null}
-            </div>
-          </section>
-        ) : null}
+  <section>
+    <SectionHeader title="Work History" />
 
+    <div className="mt-3 space-y-6">
+      {workHistory.map((work, index) => {
+        const workDates = formatWorkItemDates(work)
+
+        const titleLine = [
+          work.jobTitle?.trim(),
+          workDates,
+        ]
+          .filter(Boolean)
+          .join(", ")
+
+        const companyLine = [
+          work.employer,
+          [work.location, work.remote ? "Remote" : ""]
+            .filter(Boolean)
+            .join(", "),
+        ]
+          .filter((s) => s?.trim())
+          .join(", ")
+
+        return (
+          <div key={work.id || index} className="space-y-1">
+            {titleLine && (
+              <p className="text-[11px] text-neutral-800">
+                {titleLine}
+              </p>
+            )}
+
+            {companyLine && (
+              <p className="text-[11px] font-bold text-neutral-900">
+                {companyLine}
+              </p>
+            )}
+
+            {work.responsibilities?.trim() && (
+              <p className="text-[11px] whitespace-pre-wrap text-neutral-800">
+                {work.responsibilities}
+              </p>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  </section>
+) : null}
+
+        {/* EMPTY STATE */}
         {isEmpty ? (
           <p className="py-12 text-center text-sm text-neutral-500">
             Fill in the builder steps to see your resume here.
@@ -224,6 +260,8 @@ export function ClassicRedPreview({
     </article>
   )
 }
+
+/* helpers unchanged */
 
 function SectionHeader({ title }: { title: string }) {
   return (

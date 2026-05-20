@@ -27,17 +27,9 @@ export function ModernGoldPreview({
 }: ModernGoldPreviewProps) {
   const name = getFullName(draft) || "Your name"
   const address = getContactLocation(draft)
-  const workDates = formatWorkDatesCompact(draft)
   const gradDate = formatGraduationCompact(draft)
 
-  const workOrgLine = [
-    draft.work.employer,
-    [draft.work.location, draft.work.remote ? "Remote" : ""]
-      .filter(Boolean)
-      .join(", "),
-  ]
-    .filter((s) => s.trim())
-    .join(", ")
+  const workHistory = draft.workHistory || []
 
   const educationTitle =
     draft.education.degree.trim() !== ""
@@ -49,14 +41,17 @@ export function ModernGoldPreview({
     draft.education.institution,
     draft.education.institutionLocation,
   ]
-    .filter((s) => s.trim())
+    .filter(Boolean)
     .join(", ")
 
   const hasWork =
-    draft.work.jobTitle.trim() ||
-    draft.work.employer.trim() ||
-    workDates ||
-    workOrgLine
+    Array.isArray(workHistory) &&
+    workHistory.some(
+      (w) =>
+        w?.jobTitle?.trim() ||
+        w?.employer?.trim() ||
+        w?.responsibilities?.trim()
+    )
 
   const hasEducation =
     educationTitle.trim() ||
@@ -82,22 +77,20 @@ export function ModernGoldPreview({
         className
       )}
     >
+      {/* HEADER */}
       <header
         className="flex items-center gap-5 px-8 py-6"
         style={{ backgroundColor: GOLD }}
       >
         {draft.contact.photoDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data URL preview
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={draft.contact.photoDataUrl}
             alt=""
             className="size-[72px] shrink-0 rounded-full object-cover ring-2 ring-white/50"
           />
         ) : (
-          <span
-            className="flex size-[72px] shrink-0 items-center justify-center rounded-full bg-white/20 text-lg font-bold text-white"
-            aria-hidden
-          >
+          <span className="flex size-[72px] items-center justify-center rounded-full bg-white/20 text-lg font-bold text-white">
             {name
               .split(" ")
               .map((w) => w[0])
@@ -109,6 +102,7 @@ export function ModernGoldPreview({
         <h1 className="text-3xl font-bold tracking-tight text-white">{name}</h1>
       </header>
 
+      {/* CONTACT */}
       {hasContact ? (
         <div
           className="grid grid-cols-[auto_1fr_auto] items-stretch px-8 py-4"
@@ -119,6 +113,7 @@ export function ModernGoldPreview({
               Contact
             </p>
           </div>
+
           <div className="grid flex-1 grid-cols-2 gap-x-8 gap-y-2 border-l border-neutral-300 pl-6">
             {address ? (
               <div>
@@ -130,11 +125,10 @@ export function ModernGoldPreview({
             ) : (
               <span />
             )}
+
             {draft.contact.email.trim() ? (
               <div>
-                <p className="text-[10px] font-bold text-neutral-900">
-                  E-mail
-                </p>
+                <p className="text-[10px] font-bold text-neutral-900">E-mail</p>
                 <p className="mt-0.5 text-[10px] text-neutral-800">
                   {draft.contact.email}
                 </p>
@@ -143,6 +137,7 @@ export function ModernGoldPreview({
               <span />
             )}
           </div>
+
           {draft.contact.phone.trim() ? (
             <div className="border-l border-neutral-300 pl-6">
               <p className="text-[10px] font-bold text-neutral-900">Phone</p>
@@ -154,40 +149,74 @@ export function ModernGoldPreview({
         </div>
       ) : null}
 
+      {/* BODY */}
       <div className="space-y-6 px-8 py-6">
+        {/* SUMMARY */}
         {hasSummary ? (
           <p className="text-[11px] leading-relaxed text-neutral-800">
             {draft.summary.trim()}
           </p>
         ) : null}
 
+        {/* WORK HISTORY (MULTIPLE) */}
         {hasWork ? (
           <section>
             <SectionHeading title="Work History" />
-            <div className="mt-4 grid grid-cols-[5.5rem_1fr] gap-x-4">
-              {workDates ? (
-                <p className="text-[10px] font-bold leading-snug text-neutral-900">
-                  {workDates}
-                </p>
-              ) : (
-                <span />
-              )}
-              <div>
-                {draft.work.jobTitle.trim() ? (
-                  <p className="font-bold text-neutral-900">
-                    {draft.work.jobTitle}
-                  </p>
-                ) : null}
-                {workOrgLine ? (
-                  <p className="text-[11px] text-neutral-800 italic">
-                    {workOrgLine}
-                  </p>
-                ) : null}
-              </div>
+
+            <div className="mt-4 space-y-6">
+              {workHistory.map((work, index) => {
+                const workDates = formatWorkDatesCompact({
+                  workHistory: [work],
+                } as any)
+
+                const workOrgLine = [
+                  work.employer,
+                  [work.location, work.remote ? "Remote" : ""]
+                    .filter(Boolean)
+                    .join(", "),
+                ]
+                  .filter(Boolean)
+                  .join(", ")
+
+                return (
+                  <div key={work.id || index} className="space-y-1">
+                    <div className="grid grid-cols-[5.5rem_1fr] gap-x-4">
+                      {workDates ? (
+                        <p className="text-[10px] font-bold text-neutral-900">
+                          {workDates}
+                        </p>
+                      ) : (
+                        <span />
+                      )}
+
+                      <div>
+                        {work.jobTitle?.trim() ? (
+                          <p className="font-bold text-neutral-900">
+                            {work.jobTitle}
+                          </p>
+                        ) : null}
+
+                        {workOrgLine ? (
+                          <p className="text-[11px] italic text-neutral-800">
+                            {workOrgLine}
+                          </p>
+                        ) : null}
+
+                        {work.responsibilities?.trim() ? (
+                          <p className="mt-2 whitespace-pre-wrap text-[11px] text-neutral-700">
+                            {work.responsibilities}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </section>
         ) : null}
 
+        {/* SKILLS */}
         {hasSkills ? (
           <section>
             <SectionHeading title="Skills" />
@@ -197,7 +226,7 @@ export function ModernGoldPreview({
                   <p className="text-[10px] font-medium text-neutral-900">
                     {skill.name}
                   </p>
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
+                  <div className="mt-1.5 h-1.5 w-full rounded-full bg-neutral-200">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -212,23 +241,29 @@ export function ModernGoldPreview({
           </section>
         ) : null}
 
+        {/* EDUCATION */}
         {hasEducation ? (
           <section>
             <SectionHeading title="Education" />
+
             <div className="mt-4 grid grid-cols-[5.5rem_1fr] gap-x-4">
               {gradDate ? (
-                <p className="text-[10px] font-bold leading-snug text-neutral-900">
+                <p className="text-[10px] font-bold text-neutral-900">
                   {gradDate}
                 </p>
               ) : (
                 <span />
               )}
+
               <div>
                 {educationTitle ? (
-                  <p className="font-bold text-neutral-900">{educationTitle}</p>
+                  <p className="font-bold text-neutral-900">
+                    {educationTitle}
+                  </p>
                 ) : null}
+
                 {educationOrg ? (
-                  <p className="text-[11px] text-neutral-800 italic">
+                  <p className="text-[11px] italic text-neutral-800">
                     {educationOrg}
                   </p>
                 ) : null}
@@ -237,6 +272,7 @@ export function ModernGoldPreview({
           </section>
         ) : null}
 
+        {/* EMPTY STATE */}
         {isEmpty ? (
           <p className="py-12 text-center text-sm text-neutral-500">
             Fill in the builder steps to see your resume here.
@@ -247,13 +283,11 @@ export function ModernGoldPreview({
   )
 }
 
+/* helpers */
 function SectionHeading({ title }: { title: string }) {
   return (
     <div>
-      <h2
-        className="text-[13px] font-bold tracking-wide"
-        style={{ color: GOLD }}
-      >
+      <h2 className="text-[13px] font-bold tracking-wide text-neutral-800">
         {title}
       </h2>
       <hr className="mt-2 border-neutral-300" />
