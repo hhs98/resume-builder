@@ -115,6 +115,7 @@ export function DownloadPdfVerifyDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          full_name: trimmedName,
           phone_number: trimmedPhone,
           recaptcha,
         }),
@@ -155,11 +156,15 @@ export function DownloadPdfVerifyDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone_number: trimmedPhone,
+          full_name: trimmedName,
           otp: value,
           recaptcha,
         }),
       })
-      const data = (await res.json()) as { error?: string; access_token?: string }
+      const data = (await res.json()) as {
+        error?: string
+        access_token?: string
+      }
       if (!res.ok) {
         setError(data.error ?? "Invalid code. Try again.")
         return
@@ -384,7 +389,7 @@ export function DownloadPdfVerifyDialog({
           {step === "details" ? (
             <Button
               type="button"
-              className="sm:min-w-[7.5rem] cursor-pointer"
+              className="cursor-pointer sm:min-w-[7.5rem]"
               onClick={handleRequestOtp}
               disabled={!canVerifyDetails || isRequestingOtp}
             >
@@ -405,7 +410,7 @@ export function DownloadPdfVerifyDialog({
               </Button>
               <Button
                 type="button"
-                className="sm:min-w-[9rem] cursor-pointer"
+                className="cursor-pointer sm:min-w-[9rem]"
                 onClick={() => handleVerifyOtp()}
                 disabled={otp.length !== 6 || isVerifying}
               >
