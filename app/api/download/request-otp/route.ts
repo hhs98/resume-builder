@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server"
 
-import {
-  createDownloadOtp,
-  normalizePhoneNumber,
-} from "@/lib/download-otp-store"
-
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -15,18 +10,35 @@ export async function POST(request: Request) {
     const phoneNumber = body.phone_number?.trim() ?? ""
     const recaptcha = body.recaptcha?.trim() ?? ""
 
-    if (!normalizePhoneNumber(phoneNumber)) {
+    if (!phoneNumber) {
       return NextResponse.json(
         { error: "Phone number is required." },
         { status: 400 }
       )
     }
 
-    const code = createDownloadOtp(phoneNumber, recaptcha)
+    const response = await fetch(
+      "https://provider.jobmedia.com.bd/api/account/login/otp/send/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_number: "+88" + phoneNumber,
+          user_type: "jobseeker",
+          recaptcha: recaptcha,
+        }),
+      }
+    )
 
-    if (process.env.NODE_ENV === "development") {
-      console.info(
-        `[download-otp] ${phoneNumber}: ${code} (expires in 5 minutes)`
+    const data = await response.json()
+
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          error:
+            data.message || data.error || "Could not send verification code.",
+        },
+        { status: response.status }
       )
     }
 

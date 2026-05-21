@@ -143,15 +143,23 @@ export function DownloadPdfVerifyDialog({
     setError(null)
     setIsVerifying(true)
     try {
+      if (!executeV3) {
+        setError("reCAPTCHA is not ready. Please try again.")
+        return
+      }
+
+      const recaptcha = await executeV3("verify_otp")
+
       const res = await fetch("/api/download/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone_number: trimmedPhone,
           otp: value,
+          recaptcha,
         }),
       })
-      const data = (await res.json()) as { error?: string }
+      const data = (await res.json()) as { error?: string; access_token?: string }
       if (!res.ok) {
         setError(data.error ?? "Invalid code. Try again.")
         return
@@ -365,6 +373,7 @@ export function DownloadPdfVerifyDialog({
             <Button
               type="button"
               variant="outline"
+              className="cursor-pointer"
               disabled={isBusy}
               onClick={() => handleOpenChange(false)}
             >
@@ -375,7 +384,7 @@ export function DownloadPdfVerifyDialog({
           {step === "details" ? (
             <Button
               type="button"
-              className="sm:min-w-[7.5rem]"
+              className="sm:min-w-[7.5rem] cursor-pointer"
               onClick={handleRequestOtp}
               disabled={!canVerifyDetails || isRequestingOtp}
             >
@@ -388,6 +397,7 @@ export function DownloadPdfVerifyDialog({
               <Button
                 type="button"
                 variant="outline"
+                className="cursor-pointer"
                 disabled={isBusy}
                 onClick={handleRequestOtp}
               >
@@ -395,7 +405,7 @@ export function DownloadPdfVerifyDialog({
               </Button>
               <Button
                 type="button"
-                className="sm:min-w-[9rem]"
+                className="sm:min-w-[9rem] cursor-pointer"
                 onClick={() => handleVerifyOtp()}
                 disabled={otp.length !== 6 || isVerifying}
               >

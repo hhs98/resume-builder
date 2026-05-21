@@ -7,7 +7,6 @@ import {
   Circle,
   Download,
   LayoutTemplate,
-  Printer,
 } from "lucide-react"
 
 import { ResumePreview } from "@/components/resume/resume-preview"
@@ -59,10 +58,6 @@ export function FinalizeStep() {
   const displayName = getFullName(draft)
   const phoneNumber = draft.contact.phone
 
-  function handlePrint() {
-    window.print()
-  }
-
   async function handleDownloadAfterVerify() {
     setIsDownloadingPdf(true)
     try {
@@ -86,7 +81,7 @@ export function FinalizeStep() {
           Finalize your resume
         </h1>
         <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-          Pick a template, review your content, then print or download your
+          Pick a template, review your content, then download your
           resume.
         </p>
         <p className="text-xs text-muted-foreground">
@@ -188,16 +183,7 @@ export function FinalizeStep() {
           >
             <Button
               type="button"
-              className="gap-1.5"
-              onClick={handlePrint}
-            >
-              <Printer className="size-4" aria-hidden />
-              Print / Save as PDF
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-1.5"
+              className="gap-1.5 cursor-pointer"
               onClick={() => setVerifyDialogOpen(true)}
               disabled={isDownloadingPdf}
             >
@@ -215,7 +201,7 @@ export function FinalizeStep() {
           />
 
           <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row">
-            <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Button variant="outline" asChild className="w-full sm:w-auto cursor-pointer">
               <Link href="/new/summary">Back to summary</Link>
             </Button>
           </div>
