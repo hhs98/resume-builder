@@ -8,19 +8,12 @@ import {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
-      full_name?: string
       phone_number?: string
+      recaptcha?: string
     }
 
-    const fullName = body.full_name?.trim() ?? ""
     const phoneNumber = body.phone_number?.trim() ?? ""
-
-    if (!fullName) {
-      return NextResponse.json(
-        { error: "Full name is required." },
-        { status: 400 }
-      )
-    }
+    const recaptcha = body.recaptcha?.trim() ?? ""
 
     if (!normalizePhoneNumber(phoneNumber)) {
       return NextResponse.json(
@@ -29,7 +22,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const code = createDownloadOtp(phoneNumber, fullName)
+    const code = createDownloadOtp(phoneNumber, recaptcha)
 
     if (process.env.NODE_ENV === "development") {
       console.info(

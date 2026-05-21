@@ -16,6 +16,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { useGoogleReCaptcha } from "@google-recaptcha/react"
 
 type Step = "details" | "otp" | "success"
 
@@ -46,6 +47,7 @@ export function DownloadPdfVerifyDialog({
   phoneNumber,
   onVerified,
 }: DownloadPdfVerifyDialogProps) {
+  const { executeV3 } = useGoogleReCaptcha()
   const [step, setStep] = useState<Step>("details")
   const [otp, setOtp] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -98,15 +100,23 @@ export function DownloadPdfVerifyDialog({
   async function handleRequestOtp() {
     if (!canVerifyDetails) return
 
-    setError(null)
-    setIsRequestingOtp(true)
     try {
+      setError(null)
+      setIsRequestingOtp(true)
+
+      if (!executeV3) {
+        setError("reCAPTCHA is not ready. Please try again.")
+        return
+      }
+
+      const recaptcha = await executeV3("example")
+
       const res = await fetch("/api/download/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          full_name: trimmedName,
           phone_number: trimmedPhone,
+          recaptcha,
         }),
       })
       const data = (await res.json()) as { error?: string }
@@ -182,7 +192,9 @@ export function DownloadPdfVerifyDialog({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-base leading-none font-semibold tracking-tight">
-                <span className="text-red-600 dark:text-red-500">Job&nbsp;</span>
+                <span className="text-red-600 dark:text-red-500">
+                  Job&nbsp;
+                </span>
                 <span className="text-blue-600 dark:text-blue-500">Media</span>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -421,7 +433,7 @@ function SuccessPanel({
         You&apos;re all set, {greeting}
       </DialogTitle>
 
-      <DialogDescription className="mt-2 max-w-sm text-pretty text-sm leading-relaxed">
+      <DialogDescription className="mt-2 max-w-sm text-sm leading-relaxed text-pretty">
         This resume is now saved to your JobMedia profile as{" "}
         <span className="font-medium text-foreground">{name}</span>. Sign in
         whenever you like to update it, discover openings, and apply without
