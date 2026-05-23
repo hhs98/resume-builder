@@ -141,15 +141,9 @@ export function DownloadPdfVerifyDialog({
       return
     }
 
-    setError(null)
-    setIsVerifying(true)
     try {
-      if (!executeV3) {
-        setError("reCAPTCHA is not ready. Please try again.")
-        return
-      }
-
-      const recaptcha = await executeV3("verify_otp")
+      setError(null)
+      setIsVerifying(true)
 
       const res = await fetch("/api/download/verify-otp", {
         method: "POST",
@@ -158,7 +152,6 @@ export function DownloadPdfVerifyDialog({
           phone_number: trimmedPhone,
           full_name: trimmedName,
           otp: value,
-          recaptcha,
         }),
       })
       const data = (await res.json()) as {

@@ -37,14 +37,12 @@ export async function POST(request: Request) {
           phone_number: "+88" + phoneNumber,
           full_name: fullName,
           user_type: "jobseeker",
-          recaptcha: recaptcha,
           otp: otp,
         }),
       }
     )
 
     const data = await response.json()
-    console.log(data)
 
     if (!response.ok) {
       return NextResponse.json(
@@ -53,10 +51,12 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      access_token: data.access_token || data.token,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+      },
+      { status: 201 }
+    )
   } catch {
     return NextResponse.json({ error: "Verification failed." }, { status: 500 })
   }
