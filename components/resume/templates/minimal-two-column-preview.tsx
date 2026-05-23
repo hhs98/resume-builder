@@ -4,7 +4,6 @@ import { Phone } from "lucide-react"
 
 import {
   formatGraduationCompact,
-  formatWorkDatesCompact,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
@@ -67,8 +66,17 @@ export function MinimalTwoColumnPreview({
     draft.education.fieldOfStudy.trim() ||
     educationMetaLine
 
+  const hasReferences = (draft.references || []).length > 0
+  const hasLanguages = (draft.languages || []).length > 0
+
   const isEmpty =
-    !hasContact && !hasSummary && !hasWork && !hasSkills && !hasEducation
+    !hasContact &&
+    !hasSummary &&
+    !hasWork &&
+    !hasSkills &&
+    !hasEducation &&
+    !hasReferences &&
+    !hasLanguages
 
   return (
     <article
@@ -144,9 +152,7 @@ export function MinimalTwoColumnPreview({
 
               <div className="mt-3 space-y-5">
                 {workHistory.map((work, index) => {
-                  const workDates = formatWorkDatesCompact({
-                    workHistory: [work],
-                  } as any)
+                  const dates = formatWorkItemDates(work)
 
                   return (
                     <div key={work.id || index} className="space-y-1">
@@ -154,9 +160,9 @@ export function MinimalTwoColumnPreview({
 
                       <p className="italic">{work.jobTitle}</p>
 
-                      {workDates && (
+                      {dates && (
                         <p className="text-[10px] text-slate-600">
-                          {workDates}
+                          {dates}
                         </p>
                       )}
 
@@ -189,6 +195,20 @@ export function MinimalTwoColumnPreview({
             </section>
           )}
 
+          {hasLanguages && (
+            <section>
+              <SectionHeader title="Languages" />
+              <ul className="mt-3 space-y-2">
+                {(draft.languages || []).map((lang) => (
+                  <li key={lang.id} className="flex justify-between text-[10px]">
+                    {lang.name}
+                    <SegmentedRating value={lang.rating} max={4} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {hasEducation && (
             <section>
               <SectionHeader title="Education" />
@@ -198,6 +218,24 @@ export function MinimalTwoColumnPreview({
                   {educationMetaLine}
                 </p>
                 <p className="italic">{degreeLine}</p>
+              </div>
+            </section>
+          )}
+
+          {hasReferences && (
+            <section>
+              <SectionHeader title="References" />
+              <div className="mt-3 space-y-4">
+                {(draft.references || []).map((ref) => (
+                  <div key={ref.id} className="space-y-0.5">
+                    <p className="font-bold text-[10px]">{ref.name}</p>
+                    <p className="text-[9px] italic">
+                      {ref.designation}, {ref.organization}
+                    </p>
+                    <p className="text-[9px]">P: {ref.phone}</p>
+                    {ref.email && <p className="text-[9px]">E: {ref.email}</p>}
+                  </div>
+                ))}
               </div>
             </section>
           )}
@@ -213,7 +251,6 @@ export function MinimalTwoColumnPreview({
   )
 }
 
-/* helpers */
 function SectionHeader({ title }: { title: string }) {
   return (
     <h2 className="text-[11px] font-bold uppercase tracking-[0.12em]">
@@ -222,18 +259,37 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-function SegmentedRating({ value }: { value: number }) {
+function SegmentedRating({ value, max = 5 }: { value: number; max?: number }) {
   return (
     <span className="inline-flex gap-px">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <span
-          key={n}
-          className="h-2 w-2.5"
-          style={{
-            backgroundColor: n <= value ? PINK : "#e5e7eb",
-          }}
-        />
-      ))}
+      {Array.from({ length: max }).map((_, i) => {
+        const n = i + 1
+        return (
+          <span
+            key={n}
+            className="h-2 w-2.5"
+            style={{
+              backgroundColor: n <= value ? PINK : "#e5e7eb",
+            }}
+          />
+        )
+      })}
     </span>
   )
+}
+
+function formatWorkItemDates(work: any) {
+  const start =
+    work.startMonth && work.startYear
+      ? `${work.startMonth} ${work.startYear}`
+      : ""
+
+  const end = work.currentJob
+    ? "Present"
+    : work.endMonth && work.endYear
+      ? `${work.endMonth} ${work.endYear}`
+      : ""
+
+  if (start && end) return `${start} - ${end}`
+  return start || end || ""
 }

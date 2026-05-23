@@ -8,6 +8,22 @@ export type ResumeSkill = {
   rating: number
 }
 
+export type ResumeLanguage = {
+  id: string
+  name: string
+  rating: number // 1: Beginner, 2: Intermediate, 3: Advanced, 4: Fluent
+}
+
+export type ResumeReference = {
+  id: string
+  name: string
+  designation: string
+  organization: string
+  phone: string
+  email: string
+  address: string
+}
+
 export type WorkHistoryItem = {
   id: string
   jobTitle: string
@@ -46,6 +62,8 @@ export type ResumeDraft = {
     graduationYear: string
   }
   skills: ResumeSkill[]
+  languages: ResumeLanguage[]
+  references: ResumeReference[]
   summary: string
 }
 
@@ -89,6 +107,8 @@ export const EMPTY_RESUME_DRAFT: ResumeDraft = {
     graduationYear: "",
   },
   skills: [],
+  languages: [],
+  references: [],
   summary: "",
 }
 
@@ -166,6 +186,8 @@ export function mergeResumeDraft(
     workHistory: patch.workHistory ?? base.workHistory,
     education: { ...base.education, ...patch.education },
     skills: patch.skills ?? base.skills,
+    languages: patch.languages ?? base.languages,
+    references: patch.references ?? base.references,
     summary: patch.summary ?? base.summary,
   }
 }
@@ -271,6 +293,8 @@ export function computeResumeCompleteness(draft: ResumeDraft): number {
     Boolean(draft.education.educationLevel.trim()),
     draft.skills.length > 0,
     draft.summary.trim().length >= 40,
+    draft.references.length > 0,
+    draft.languages.length > 0,
   ]
   const done = checks.filter(Boolean).length
   return Math.round((done / checks.length) * 100)
@@ -303,8 +327,18 @@ export const FINALIZE_SECTIONS = [
     isComplete: (d: ResumeDraft) => d.skills.length > 0,
   },
   {
+    href: "/new/languages",
+    label: "Languages",
+    isComplete: (d: ResumeDraft) => d.languages.length > 0,
+  },
+  {
     href: "/new/summary",
     label: "Summary",
     isComplete: (d: ResumeDraft) => d.summary.trim().length >= 40,
+  },
+  {
+    href: "/new/references",
+    label: "References",
+    isComplete: (d: ResumeDraft) => d.references.length > 0,
   },
 ] as const

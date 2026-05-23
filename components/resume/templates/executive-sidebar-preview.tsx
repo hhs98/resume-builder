@@ -13,6 +13,13 @@ import { cn } from "@/lib/utils"
 const SIDEBAR_GREEN = "#1a5c38"
 const SIDEBAR_HEADER_GREEN = "#2a6b47"
 
+const PROFICIENCY_LABELS: Record<number, string> = {
+  1: "Beginner",
+  2: "Intermediate",
+  3: "Advanced",
+  4: "Fluent",
+}
+
 type ExecutiveSidebarPreviewProps = {
   draft: ResumeDraft
   className?: string
@@ -71,9 +78,17 @@ export function ExecutiveSidebarPreview({
   const hasSummary = draft.summary.trim().length > 0
   const hasContact =
     address || draft.contact.phone.trim() || draft.contact.email.trim()
+  const hasReferences = (draft.references || []).length > 0
+  const hasLanguages = (draft.languages || []).length > 0
 
   const isEmpty =
-    !hasSummary && !hasWork && !hasEducation && !hasSkills && !hasContact
+    !hasSummary &&
+    !hasWork &&
+    !hasEducation &&
+    !hasSkills &&
+    !hasContact &&
+    !hasReferences &&
+    !hasLanguages
 
   return (
     <article
@@ -135,6 +150,21 @@ export function ExecutiveSidebarPreview({
                 </li>
               ))}
             </ul>
+          </SidebarBlock>
+        ) : null}
+
+        {hasLanguages ? (
+          <SidebarBlock title="Languages">
+            <div className="space-y-2">
+              {(draft.languages || []).map((lang) => (
+                <div key={lang.id}>
+                  <p className="text-[10px] font-bold">{lang.name}</p>
+                  <p className="text-[9px] text-white/70 italic">
+                    {PROFICIENCY_LABELS[lang.rating]}
+                  </p>
+                </div>
+              ))}
+            </div>
           </SidebarBlock>
         ) : null}
       </aside>
@@ -206,6 +236,36 @@ export function ExecutiveSidebarPreview({
               {gradDate && (
                 <p className="text-[10px] text-neutral-500">{gradDate}</p>
               )}
+            </div>
+          </section>
+        ) : null}
+
+        {/* REFERENCES */}
+        {hasReferences ? (
+          <section className="mt-2">
+            <MainSectionHeader title="References" />
+            <div className="mt-4 grid grid-cols-2 gap-6">
+              {(draft.references || []).map((ref) => (
+                <div key={ref.id} className="space-y-1">
+                  <p className="font-bold text-neutral-900">{ref.name}</p>
+                  <p className="text-[10px] text-neutral-600">
+                    {ref.designation}, {ref.organization}
+                  </p>
+                  <p className="text-[10px] text-neutral-600">
+                    Phone: {ref.phone}
+                  </p>
+                  {ref.email && (
+                    <p className="text-[10px] text-neutral-600">
+                      Email: {ref.email}
+                    </p>
+                  )}
+                  {ref.address && (
+                    <p className="text-[10px] text-neutral-600">
+                      {ref.address}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
         ) : null}

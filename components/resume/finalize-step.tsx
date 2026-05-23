@@ -202,7 +202,7 @@ export function FinalizeStep() {
 
           <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row">
             <Button variant="outline" asChild className="w-full sm:w-auto cursor-pointer">
-              <Link href="/new/summary">Back to summary</Link>
+              <Link href="/new/references">Back to references</Link>
             </Button>
           </div>
         </div>

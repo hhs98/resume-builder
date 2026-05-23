@@ -14,7 +14,9 @@ export const BUILDER_STEPS = [
   { href: "/new/work-history", label: "Work history" },
   { href: "/new/education", label: "Education" },
   { href: "/new/skills", label: "Skills" },
+  { href: "/new/languages", label: "Languages" },
   { href: "/new/summary", label: "Summary" },
+  { href: "/new/references", label: "References" },
   { href: "/new/finalize", label: "Finalize" },
 ] as const
 

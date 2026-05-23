@@ -207,10 +207,10 @@ export function SummaryStep() {
 
           <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/new/skills">Back</Link>
+              <Link href="/new/languages">Back</Link>
             </Button>
             <Button asChild className="w-full sm:w-auto">
-              <Link href="/new/finalize">Next: Finalize</Link>
+              <Link href="/new/references">Next: References</Link>
             </Button>
           </div>
         </div>

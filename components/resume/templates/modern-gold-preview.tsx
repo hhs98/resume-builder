@@ -63,9 +63,11 @@ export function ModernGoldPreview({
   const hasSummary = draft.summary.trim().length > 0
   const hasContact =
     address || draft.contact.phone.trim() || draft.contact.email.trim()
+  const hasReferences = (draft.references || []).length > 0
+  const hasLanguages = (draft.languages || []).length > 0
 
   const isEmpty =
-    !hasSummary && !hasWork && !hasEducation && !hasSkills && !hasContact
+    !hasSummary && !hasWork && !hasEducation && !hasSkills && !hasContact && !hasReferences && !hasLanguages
 
   return (
     <article
@@ -165,9 +167,7 @@ export function ModernGoldPreview({
 
             <div className="mt-4 space-y-6">
               {workHistory.map((work, index) => {
-                const workDates = formatWorkDatesCompact({
-                  workHistory: [work],
-                } as any)
+                const dates = formatWorkItemDates(work)
 
                 const workOrgLine = [
                   work.employer,
@@ -181,9 +181,9 @@ export function ModernGoldPreview({
                 return (
                   <div key={work.id || index} className="space-y-1">
                     <div className="grid grid-cols-[5.5rem_1fr] gap-x-4">
-                      {workDates ? (
+                      {dates ? (
                         <p className="text-[10px] font-bold text-neutral-900">
-                          {workDates}
+                          {dates}
                         </p>
                       ) : (
                         <span />
@@ -241,6 +241,31 @@ export function ModernGoldPreview({
           </section>
         ) : null}
 
+        {/* LANGUAGES */}
+        {hasLanguages && (
+          <section>
+            <SectionHeading title="Languages" />
+            <ul className="mt-4 grid grid-cols-3 gap-x-6 gap-y-4">
+              {(draft.languages || []).map((lang) => (
+                <li key={lang.id} className="min-w-0">
+                  <p className="text-[10px] font-medium text-neutral-900">
+                    {lang.name}
+                  </p>
+                  <div className="mt-1.5 h-1.5 w-full rounded-full bg-neutral-200">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        backgroundColor: GOLD,
+                        width: `${(lang.rating / 4) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* EDUCATION */}
         {hasEducation ? (
           <section>
@@ -272,6 +297,27 @@ export function ModernGoldPreview({
           </section>
         ) : null}
 
+        {/* REFERENCES */}
+        {hasReferences && (
+          <section>
+            <SectionHeading title="References" />
+            <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-6">
+              {(draft.references || []).map((ref) => (
+                <div key={ref.id} className="space-y-1">
+                  <p className="font-bold text-neutral-900">{ref.name}</p>
+                  <p className="text-[10px] text-neutral-800">
+                    {ref.designation}, {ref.organization}
+                  </p>
+                  <p className="text-[10px] text-neutral-800">
+                    Phone: {ref.phone}
+                  </p>
+                  {ref.email && <p className="text-[10px] text-neutral-800">Email: {ref.email}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* EMPTY STATE */}
         {isEmpty ? (
           <p className="py-12 text-center text-sm text-neutral-500">
@@ -293,4 +339,20 @@ function SectionHeading({ title }: { title: string }) {
       <hr className="mt-2 border-neutral-300" />
     </div>
   )
+}
+
+function formatWorkItemDates(work: any) {
+  const start =
+    work.startMonth && work.startYear
+      ? `${work.startMonth} ${work.startYear}`
+      : ""
+
+  const end = work.currentJob
+    ? "Present"
+    : work.endMonth && work.endYear
+      ? `${work.endMonth} ${work.endYear}`
+      : ""
+
+  if (start && end) return `${start} - ${end}`
+  return start || end || ""
 }

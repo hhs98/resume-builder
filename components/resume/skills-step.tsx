@@ -344,7 +344,7 @@ export function SkillsStep() {
               <Link href="/new/education">Back</Link>
             </Button>
             <Button asChild className="w-full sm:w-auto">
-              <Link href="/new/summary">Next: Summary</Link>
+              <Link href="/new/languages">Next: Languages</Link>
             </Button>
           </div>
         </div>

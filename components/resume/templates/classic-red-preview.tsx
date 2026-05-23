@@ -58,9 +58,17 @@ export function ClassicRedPreview({
   const hasEducation = educationDegreeLine.trim() || educationOrgLine.trim()
   const hasSkills = draft.skills.length > 0
   const hasWork = workHistory.length > 0
+  const hasReferences = (draft.references || []).length > 0
+  const hasLanguages = (draft.languages || []).length > 0
 
   const isEmpty =
-    !hasContact && !hasSummary && !hasEducation && !hasSkills && !hasWork
+    !hasContact &&
+    !hasSummary &&
+    !hasEducation &&
+    !hasSkills &&
+    !hasWork &&
+    !hasReferences &&
+    !hasLanguages
 
   return (
     <article
@@ -199,6 +207,27 @@ export function ClassicRedPreview({
           </section>
         ) : null}
 
+        {/* LANGUAGES */}
+        {hasLanguages ? (
+          <section>
+            <SectionHeader title="Languages" />
+            <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
+              {(draft.languages || []).map((lang) => (
+                <li
+                  key={lang.id}
+                  className="flex items-center gap-1.5 text-[10px] text-neutral-900"
+                >
+                  <span className="min-w-0 flex-1 leading-snug">
+                    {lang.name}
+                  </span>
+                  <SkillDots rating={lang.rating} max={4} />
+                </li>
+              ))}
+            </ul>
+            <RedDivider />
+          </section>
+        ) : null}
+
         {/* WORK HISTORY (FIXED MULTI) */}
         {hasWork ? (
   <section>
@@ -247,8 +276,41 @@ export function ClassicRedPreview({
         )
       })}
     </div>
+    <RedDivider />
   </section>
 ) : null}
+
+        {/* REFERENCES */}
+        {hasReferences ? (
+          <section>
+            <SectionHeader title="References" />
+            <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-6">
+              {(draft.references || []).map((ref) => (
+                <div key={ref.id} className="space-y-1">
+                  <p className="text-[11px] font-bold text-neutral-900">
+                    {ref.name}
+                  </p>
+                  <p className="text-[10px] text-neutral-800">
+                    {ref.designation}, {ref.organization}
+                  </p>
+                  <p className="text-[10px] text-neutral-800">
+                    Phone: {ref.phone}
+                  </p>
+                  {ref.email ? (
+                    <p className="text-[10px] text-neutral-800">
+                      Email: {ref.email}
+                    </p>
+                  ) : null}
+                  {ref.address ? (
+                    <p className="text-[10px] text-neutral-800">
+                      {ref.address}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {/* EMPTY STATE */}
         {isEmpty ? (
@@ -260,8 +322,6 @@ export function ClassicRedPreview({
     </article>
   )
 }
-
-/* helpers unchanged */
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -286,19 +346,22 @@ function RedDivider({ className }: { className?: string }) {
   )
 }
 
-function SkillDots({ rating }: { rating: number }) {
+function SkillDots({ rating, max = 5 }: { rating: number; max?: number }) {
   return (
     <span className="inline-flex shrink-0 gap-0.5" aria-hidden>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <span
-          key={n}
-          className="size-2 rounded-full border"
-          style={{
-            borderColor: RED,
-            backgroundColor: n <= rating ? RED : "transparent",
-          }}
-        />
-      ))}
+      {Array.from({ length: max }).map((_, i) => {
+        const n = i + 1
+        return (
+          <span
+            key={n}
+            className="size-2 rounded-full border"
+            style={{
+              borderColor: RED,
+              backgroundColor: n <= rating ? RED : "transparent",
+            }}
+          />
+        )
+      })}
     </span>
   )
 }
