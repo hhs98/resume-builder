@@ -17,6 +17,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { useGoogleReCaptcha } from "@google-recaptcha/react"
+import type { ResumeDraft } from "@/lib/resume-draft"
 
 type Step = "details" | "otp" | "success"
 
@@ -27,6 +28,7 @@ type DownloadPdfVerifyDialogProps = {
   onOpenChange: (open: boolean) => void
   fullName: string
   phoneNumber: string
+  draft: ResumeDraft
   onVerified: () => void | Promise<void>
 }
 
@@ -40,11 +42,37 @@ function firstName(fullName: string) {
   return fullName.trim().split(/\s+/)[0] || "there"
 }
 
+function formatSeconds(seconds: number): string {
+  if (seconds <= 0) return "a moment"
+
+  const units = [
+    { label: "year", seconds: 31536000 },
+    { label: "day", seconds: 86400 },
+    { label: "hour", seconds: 3600 },
+    { label: "minute", seconds: 60 },
+    { label: "second", seconds: 1 },
+  ]
+
+  const parts: string[] = []
+  let remaining = Math.round(seconds)
+
+  for (const unit of units) {
+    const value = Math.floor(remaining / unit.seconds)
+    if (value > 0) {
+      parts.push(`${value} ${unit.label}${value === 1 ? "" : "s"}`)
+      remaining %= unit.seconds
+    }
+  }
+
+  return parts.join(", ")
+}
+
 export function DownloadPdfVerifyDialog({
   open,
   onOpenChange,
   fullName,
   phoneNumber,
+  draft,
   onVerified,
 }: DownloadPdfVerifyDialogProps) {
   const { executeV3 } = useGoogleReCaptcha()
@@ -54,6 +82,7 @@ export function DownloadPdfVerifyDialog({
   const [isRequestingOtp, setIsRequestingOtp] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [downloadState, setDownloadState] = useState<DownloadState>("idle")
+  const [resumeId, setResumeId] = useState<string | null>(null)
 
   const trimmedName = fullName.trim()
   const trimmedPhone = phoneNumber.trim()
@@ -67,6 +96,7 @@ export function DownloadPdfVerifyDialog({
     setIsRequestingOtp(false)
     setIsVerifying(false)
     setDownloadState("idle")
+    setResumeId(null)
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -120,9 +150,13 @@ export function DownloadPdfVerifyDialog({
           recaptcha,
         }),
       })
-      const data = (await res.json()) as { error?: string }
+      const data = (await res.json()) as { error?: string | number }
       if (!res.ok) {
-        setError(data.error ?? "Could not send verification code.")
+        if (typeof data.error === "number") {
+          setError(`Please try again in ${formatSeconds(data.error)}.`)
+        } else {
+          setError(data.error ?? "Could not send verification code.")
+        }
         return
       }
       setStep("otp")
@@ -156,11 +190,32 @@ export function DownloadPdfVerifyDialog({
       })
       const data = (await res.json()) as {
         error?: string
-        access_token?: string
+        success?: boolean
       }
       if (!res.ok) {
         setError(data.error ?? "Invalid code. Try again.")
         return
+      }
+
+      // After successful OTP verification, send the draft to the resumes API
+      const resumeRes = await fetch("/api/resumes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      })
+
+      const resumeData = (await resumeRes.json()) as {
+        success?: boolean
+        id?: string
+        error?: string
+      }
+
+      if (!resumeRes.ok) {
+        console.error("Failed to save resume draft:", resumeData.error)
+      }
+
+      if (resumeData.id) {
+        setResumeId(resumeData.id)
       }
 
       await finishVerificationAndDownload()
@@ -315,6 +370,7 @@ export function DownloadPdfVerifyDialog({
             <SuccessPanel
               name={trimmedName}
               greeting={firstName(trimmedName)}
+              resumeId={resumeId}
               downloadState={downloadState}
               onRetryDownload={() => {
                 void (async () => {
@@ -341,7 +397,7 @@ export function DownloadPdfVerifyDialog({
                 asChild
               >
                 <a
-                  href="https://jobmedia.com"
+                  href="https://jobmedia.com.bd"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -420,11 +476,13 @@ export function DownloadPdfVerifyDialog({
 function SuccessPanel({
   name,
   greeting,
+  resumeId,
   downloadState,
   onRetryDownload,
 }: {
   name: string
   greeting: string
+  resumeId: string | null
   downloadState: DownloadState
   onRetryDownload: () => void
 }) {
@@ -447,6 +505,16 @@ function SuccessPanel({
         whenever you like to update it, discover openings, and apply without
         starting from scratch.
       </DialogDescription>
+
+      {resumeId && (
+        <div className="mt-4">
+          <Button variant="link" asChild size="sm">
+            <Link href={`/my-resume/preview?id=${resumeId}`} target="_blank">
+              View stored resume
+            </Link>
+          </Button>
+        </div>
+      )}
 
       <div className="mt-5 w-full rounded-lg border border-border bg-muted/30 px-4 py-3 text-left text-sm">
         {downloadState === "downloading" ? (

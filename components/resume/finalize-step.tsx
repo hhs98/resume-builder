@@ -6,6 +6,7 @@ import {
   Check,
   Circle,
   Download,
+  Eye,
   LayoutTemplate,
 } from "lucide-react"
 
@@ -190,6 +191,16 @@ export function FinalizeStep() {
               <Download className="size-4" aria-hidden />
               {isDownloadingPdf ? "Generating PDF…" : "Download PDF"}
             </Button>
+            <Button
+              variant="secondary"
+              className="gap-1.5 cursor-pointer"
+              asChild
+            >
+              <Link href="/my-resume/preview" target="_blank">
+                <Eye className="size-4" aria-hidden />
+                View Full Preview
+              </Link>
+            </Button>
           </section>
 
           <DownloadPdfVerifyDialog
@@ -197,6 +208,7 @@ export function FinalizeStep() {
             onOpenChange={setVerifyDialogOpen}
             fullName={displayName}
             phoneNumber={phoneNumber}
+            draft={draft}
             onVerified={handleDownloadAfterVerify}
           />
 

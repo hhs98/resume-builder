@@ -6,13 +6,11 @@ export async function POST(request: Request) {
       full_name?: string
       phone_number?: string
       otp?: string
-      recaptcha?: string
     }
 
     const fullName = body.full_name?.trim() ?? ""
     const phoneNumber = body.phone_number?.trim() ?? ""
     const otp = body.otp?.trim() ?? ""
-    const recaptcha = body.recaptcha?.trim() ?? ""
 
     if (!fullName) {
       return NextResponse.json(
@@ -55,9 +53,10 @@ export async function POST(request: Request) {
       {
         success: true,
       },
-      { status: 201 }
+      { status: 200 }
     )
-  } catch {
+  } catch (error) {
+    console.error("Verification error:", error)
     return NextResponse.json({ error: "Verification failed." }, { status: 500 })
   }
 }

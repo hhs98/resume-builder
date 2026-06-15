@@ -129,6 +129,18 @@
 }
 
 @media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -146,11 +158,15 @@
     top: 0;
     width: 100%;
     transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .resume-preview {
     box-shadow: none !important;
     max-width: none !important;
     background-color: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
