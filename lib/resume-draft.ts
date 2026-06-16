@@ -39,6 +39,7 @@ export type WorkHistoryItem = {
 }
 
 export type ResumeDraft = {
+  id: string
   templateId: ResumeTemplateId
   contact: {
     givenName: string
@@ -70,6 +71,7 @@ export type ResumeDraft = {
 export const RESUME_DRAFT_STORAGE_KEY = "jobmedia-resume-draft-v1"
 
 export const EMPTY_RESUME_DRAFT: ResumeDraft = {
+  id: crypto.randomUUID(),
   templateId: "classic",
   contact: {
     givenName: "",

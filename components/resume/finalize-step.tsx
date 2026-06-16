@@ -2,13 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import {
-  Check,
-  Circle,
-  Download,
-  Eye,
-  LayoutTemplate,
-} from "lucide-react"
+import { Check, Circle, Download, Eye, LayoutTemplate } from "lucide-react"
 
 import { ResumePreview } from "@/components/resume/resume-preview"
 import { Button } from "@/components/ui/button"
@@ -20,7 +14,7 @@ import {
 } from "@/lib/resume-draft"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { DownloadPdfVerifyDialog } from "@/components/resume/download-pdf-verify-dialog"
-import { downloadResumePdf } from "@/lib/download-resume-pdf"
+import { downloadResumePdfUrl } from "@/lib/download-resume-pdf"
 import { cn } from "@/lib/utils"
 
 const TEMPLATES: {
@@ -59,15 +53,20 @@ export function FinalizeStep() {
   const displayName = getFullName(draft)
   const phoneNumber = draft.contact.phone
 
-  async function handleDownloadAfterVerify() {
+  async function handleDownloadAfterVerify(savedResumeId: string | null) {
+    if (!savedResumeId) {
+      throw new Error("Resume was not saved")
+    }
+
     setIsDownloadingPdf(true)
     try {
-      await downloadResumePdf(
-        "resume-print-preview",
+      await downloadResumePdfUrl(
+        savedResumeId,
         displayName.trim() || "resume"
       )
     } catch (error) {
       console.error("Failed to generate PDF", error)
+      throw error
     } finally {
       setIsDownloadingPdf(false)
     }
@@ -82,8 +81,7 @@ export function FinalizeStep() {
           Finalize your resume
         </h1>
         <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-          Pick a template, review your content, then download your
-          resume.
+          Pick a template, review your content, then download your resume.
         </p>
         <p className="text-xs text-muted-foreground">
           Resume completeness:{" "}
@@ -93,7 +91,10 @@ export function FinalizeStep() {
 
       <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,380px)_1fr] xl:items-start">
         <div className="space-y-8">
-          <section className="space-y-3" aria-labelledby="template-picker-heading">
+          <section
+            className="space-y-3"
+            aria-labelledby="template-picker-heading"
+          >
             <div className="flex items-center gap-2">
               <LayoutTemplate
                 className="size-4 text-muted-foreground"
@@ -134,7 +135,10 @@ export function FinalizeStep() {
             </div>
           </section>
 
-          <section className="space-y-3" aria-labelledby="sections-checklist-heading">
+          <section
+            className="space-y-3"
+            aria-labelledby="sections-checklist-heading"
+          >
             <h2
               id="sections-checklist-heading"
               className="text-sm font-medium text-foreground"
@@ -184,14 +188,14 @@ export function FinalizeStep() {
           >
             <Button
               type="button"
-              className="gap-1.5 cursor-pointer"
+              className="cursor-pointer gap-1.5"
               onClick={() => setVerifyDialogOpen(true)}
               disabled={isDownloadingPdf}
             >
               <Download className="size-4" aria-hidden />
               {isDownloadingPdf ? "Generating PDF…" : "Download PDF"}
             </Button>
-            <Button
+            {/* <Button
               variant="secondary"
               className="gap-1.5 cursor-pointer"
               asChild
@@ -200,7 +204,7 @@ export function FinalizeStep() {
                 <Eye className="size-4" aria-hidden />
                 View Full Preview
               </Link>
-            </Button>
+            </Button> */}
           </section>
 
           <DownloadPdfVerifyDialog
@@ -212,11 +216,11 @@ export function FinalizeStep() {
             onVerified={handleDownloadAfterVerify}
           />
 
-          <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row">
+          {/* <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row">
             <Button variant="outline" asChild className="w-full sm:w-auto cursor-pointer">
               <Link href="/new/references">Back to references</Link>
             </Button>
-          </div>
+          </div> */}
         </div>
 
         <div className="min-w-0 xl:sticky xl:top-6" id="resume-preview-panel">

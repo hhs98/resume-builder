@@ -29,7 +29,7 @@ type DownloadPdfVerifyDialogProps = {
   fullName: string
   phoneNumber: string
   draft: ResumeDraft
-  onVerified: () => void | Promise<void>
+  onVerified: (resumeId: string | null) => void | Promise<void>
 }
 
 function maskPhone(phone: string) {
@@ -83,6 +83,7 @@ export function DownloadPdfVerifyDialog({
   const [isVerifying, setIsVerifying] = useState(false)
   const [downloadState, setDownloadState] = useState<DownloadState>("idle")
   const [resumeId, setResumeId] = useState<string | null>(null)
+  const [saveSucceeded, setSaveSucceeded] = useState(false)
 
   const trimmedName = fullName.trim()
   const trimmedPhone = phoneNumber.trim()
@@ -97,6 +98,7 @@ export function DownloadPdfVerifyDialog({
     setIsVerifying(false)
     setDownloadState("idle")
     setResumeId(null)
+    setSaveSucceeded(false)
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -115,17 +117,32 @@ export function DownloadPdfVerifyDialog({
     setOtp("")
     setError(null)
   }
-  //Hello
 
-  async function finishVerificationAndDownload() {
-    setStep("success")
+  async function requestPdfDownload(id: string | null) {
+    if (!id) {
+      setDownloadState("error")
+      return
+    }
+
     setDownloadState("downloading")
     try {
-      await onVerified()
+      await onVerified(id)
       setDownloadState("done")
     } catch {
       setDownloadState("error")
     }
+  }
+
+  async function finishVerificationAndDownload(id: string | null, saved: boolean) {
+    setStep("success")
+    setSaveSucceeded(saved)
+
+    if (!saved || !id) {
+      setDownloadState("error")
+      return
+    }
+
+    await requestPdfDownload(id)
   }
 
   async function handleRequestOtp() {
@@ -211,15 +228,18 @@ export function DownloadPdfVerifyDialog({
         error?: string
       }
 
-      if (!resumeRes.ok) {
+      const saved = resumeRes.ok && Boolean(resumeData.id)
+      if (!saved) {
         console.error("Failed to save resume draft:", resumeData.error)
       }
 
+      let currentId: string | null = null
       if (resumeData.id) {
         setResumeId(resumeData.id)
+        currentId = resumeData.id
       }
 
-      await finishVerificationAndDownload()
+      await finishVerificationAndDownload(currentId, saved)
     } catch {
       setError("Verification failed. Try again.")
     } finally {
@@ -372,18 +392,9 @@ export function DownloadPdfVerifyDialog({
               name={trimmedName}
               greeting={firstName(trimmedName)}
               resumeId={resumeId}
+              saveSucceeded={saveSucceeded}
               downloadState={downloadState}
-              onRetryDownload={() => {
-                void (async () => {
-                  setDownloadState("downloading")
-                  try {
-                    await onVerified()
-                    setDownloadState("done")
-                  } catch {
-                    setDownloadState("error")
-                  }
-                })()
-              }}
+              onRequestDownload={() => void requestPdfDownload(resumeId)}
             />
           ) : null}
         </div>
@@ -405,6 +416,16 @@ export function DownloadPdfVerifyDialog({
                   Visit JobMedia
                 </a>
               </Button>
+              {resumeId && downloadState === "error" ? (
+                <Button
+                  type="button"
+                  className="gap-1.5"
+                  onClick={() => void requestPdfDownload(resumeId)}
+                >
+                  <Download className="size-4" aria-hidden />
+                  Download again
+                </Button>
+              ) : null}
               <Button type="button" onClick={handleDone}>
                 Done
               </Button>
@@ -478,15 +499,19 @@ function SuccessPanel({
   name,
   greeting,
   resumeId,
+  saveSucceeded,
   downloadState,
-  onRetryDownload,
+  onRequestDownload,
 }: {
   name: string
   greeting: string
   resumeId: string | null
+  saveSucceeded: boolean
   downloadState: DownloadState
-  onRetryDownload: () => void
+  onRequestDownload: () => void
 }) {
+  const canDownload = Boolean(resumeId) && downloadState !== "downloading"
+
   return (
     <div className="flex flex-col items-center py-2 text-center">
       <span
@@ -497,59 +522,56 @@ function SuccessPanel({
       </span>
 
       <DialogTitle className="mt-4 text-lg">
-        You&apos;re all set, {greeting}
+        {saveSucceeded
+          ? `You're all set, ${greeting}`
+          : "Verification complete"}
       </DialogTitle>
 
       <DialogDescription className="mt-2 max-w-sm text-sm leading-relaxed text-pretty">
-        This resume is now saved to your JobMedia profile as{" "}
-        <span className="font-medium text-foreground">{name}</span>. Sign in
-        whenever you like to update it, discover openings, and apply without
-        starting from scratch.
+        {saveSucceeded ? (
+          <>
+            This resume is now saved to your JobMedia profile as{" "}
+            <span className="font-medium text-foreground">{name}</span>. Sign in
+            whenever you like to update it, discover openings, and apply without
+            starting from scratch.
+          </>
+        ) : (
+          <>
+            We verified your phone number, but couldn&apos;t save your resume.
+            Please try again or contact support.
+          </>
+        )}
       </DialogDescription>
 
-      {resumeId && (
-        <div className="mt-4">
-          <Button variant="link" asChild size="sm">
-            <Link href={`/my-resume/preview?id=${resumeId}`} target="_blank">
-              View stored resume
-            </Link>
-          </Button>
-        </div>
-      )}
-
-      <div className="mt-5 w-full rounded-lg border border-border bg-muted/30 px-4 py-3 text-left text-sm">
-        {downloadState === "downloading" ? (
-          <p className="flex items-center gap-2 text-muted-foreground">
-            <Download className="size-4 shrink-0 animate-pulse" aria-hidden />
-            Preparing your PDF download…
-          </p>
-        ) : null}
-        {downloadState === "done" ? (
-          <p className="text-foreground">
-            <span className="font-medium">PDF ready.</span> If it didn&apos;t
-            open automatically, check your downloads folder.
-          </p>
-        ) : null}
-        {downloadState === "error" ? (
-          <div className="space-y-2">
-            <p className="text-destructive">
-              We couldn&apos;t generate your PDF. Your profile was still saved.
+      {saveSucceeded ? (
+        <div className="mt-5 w-full rounded-lg border border-border bg-muted/30 px-4 py-3 text-left text-sm">
+          {downloadState === "downloading" || downloadState === "idle" ? (
+            <p className="flex items-center gap-2 text-muted-foreground">
+              <Download className="size-4 shrink-0 animate-pulse" aria-hidden />
+              {downloadState === "idle"
+                ? "Starting your download…"
+                : "Preparing your PDF download…"}
             </p>
+          ) : null}
+          {downloadState === "done" ? (
+            <p className="text-foreground">
+              <span className="font-medium">PDF ready.</span> Your resume has
+              been downloaded successfully.
+            </p>
+          ) : null}
+          {downloadState === "error" && canDownload ? (
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              className="w-full"
-              onClick={onRetryDownload}
+              className="w-full gap-1.5"
+              onClick={onRequestDownload}
             >
-              Try download again
+              <Download className="size-4" aria-hidden />
+              Download again
             </Button>
-          </div>
-        ) : null}
-        {downloadState === "idle" ? (
-          <p className="text-muted-foreground">Starting your download…</p>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

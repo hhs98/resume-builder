@@ -68,3 +68,27 @@ export async function downloadResumePdf(
     container.style.transform = previousTransform
   }
 }
+
+export async function downloadResumePdfUrl(
+  resumeId: string,
+  displayName: string
+): Promise<void> {
+  const res = await fetch(`/api/resumes/${resumeId}/pdf`, {
+    method: "POST",
+  })
+
+  if (!res.ok) {
+    throw new Error("Failed to generate PDF")
+  }
+
+  const blob = await res.blob()
+  const downloadUrl = window.URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = downloadUrl
+  const baseName = sanitizeFileName(displayName) || "resume"
+  a.download = `${baseName}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  window.URL.revokeObjectURL(downloadUrl)
+}
