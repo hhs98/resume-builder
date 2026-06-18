@@ -2,10 +2,22 @@
 
 import {
   formatGraduationCompact,
+  formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getPreviewLanguages,
+  getPreviewReferences,
+  getPreviewSkills,
+  getPreviewWorkHistory,
+  hasEducationContent,
+  hasPreviewContact,
+  hasPreviewLanguages,
+  hasPreviewReferences,
+  hasPreviewSkills,
+  hasPreviewWorkHistory,
+  hasSummaryContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -26,22 +38,6 @@ type ExecutiveSidebarPreviewProps = {
   id?: string
 }
 
-function formatWorkItemDates(work: any) {
-  const start =
-    work.startMonth && work.startYear
-      ? `${work.startMonth} ${work.startYear}`
-      : ""
-
-  const end = work.currentJob
-    ? "Present"
-    : work.endMonth && work.endYear
-      ? `${work.endMonth} ${work.endYear}`
-      : ""
-
-  if (start && end) return `${start} - ${end}`
-  return start || end || ""
-}
-
 export function ExecutiveSidebarPreview({
   draft,
   className,
@@ -50,7 +46,10 @@ export function ExecutiveSidebarPreview({
   const name = getFullName(draft) || "Your name"
   const address = getContactLocation(draft)
 
-  const workHistory = draft.workHistory ?? []
+  const workHistory = getPreviewWorkHistory(draft)
+  const skills = getPreviewSkills(draft)
+  const languages = getPreviewLanguages(draft)
+  const references = getPreviewReferences(draft)
   const gradDate = formatGraduationCompact(draft)
 
   const educationTitle =
@@ -66,20 +65,13 @@ export function ExecutiveSidebarPreview({
     .filter((s) => s.trim())
     .join(", ")
 
-  const hasWork = workHistory.length > 0
-
-  const hasEducation =
-    educationTitle.trim() ||
-    educationOrg.trim() ||
-    gradDate ||
-    draft.education.educationLevel.trim()
-
-  const hasSkills = draft.skills.length > 0
-  const hasSummary = draft.summary.trim().length > 0
-  const hasContact =
-    address || draft.contact.phone.trim() || draft.contact.email.trim()
-  const hasReferences = (draft.references || []).length > 0
-  const hasLanguages = (draft.languages || []).length > 0
+  const hasWork = hasPreviewWorkHistory(draft)
+  const hasEducation = hasEducationContent(draft)
+  const hasSkills = hasPreviewSkills(draft)
+  const hasSummary = hasSummaryContent(draft)
+  const hasContact = hasPreviewContact(draft)
+  const hasReferences = hasPreviewReferences(draft)
+  const hasLanguages = hasPreviewLanguages(draft)
 
   const isEmpty =
     !hasSummary &&
@@ -141,7 +133,7 @@ export function ExecutiveSidebarPreview({
         {hasSkills ? (
           <SidebarBlock title="Skills">
             <ul className="flex flex-wrap gap-1.5">
-              {draft.skills.map((skill) => (
+              {skills.map((skill) => (
                 <li
                   key={skill.id}
                   className="rounded-full border border-white/80 px-2.5 py-0.5 text-[9px]"
@@ -156,7 +148,7 @@ export function ExecutiveSidebarPreview({
         {hasLanguages ? (
           <SidebarBlock title="Languages">
             <div className="space-y-2">
-              {(draft.languages || []).map((lang) => (
+              {languages.map((lang) => (
                 <div key={lang.id}>
                   <p className="text-[10px] font-bold">{lang.name}</p>
                   <p className="text-[9px] text-white/70 italic">
@@ -245,7 +237,7 @@ export function ExecutiveSidebarPreview({
           <section className="mt-2">
             <MainSectionHeader title="References" />
             <div className="mt-4 grid grid-cols-2 gap-6">
-              {(draft.references || []).map((ref) => (
+              {references.map((ref) => (
                 <div key={ref.id} className="space-y-1">
                   <p className="font-bold text-neutral-900">{ref.name}</p>
                   <p className="text-[10px] text-neutral-600">

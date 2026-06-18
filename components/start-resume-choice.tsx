@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Sparkles, Upload } from "lucide-react"
+import { FileText, Sparkles } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -15,28 +15,28 @@ const choices = [
     href: "/import",
     title: "Yes, upload from my resume",
     description:
-      "We'll give you expert guidance to fill out your info and enhance your resume, from start to finish",
-    icon: Upload,
+      "We'll give you expert guidance to fill out your info and enhance your resume, from start to finish.",
+    icon: FileText,
   },
 ] as const
 
 export function StartResumeChoice() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-5 sm:grid-cols-2">
       {choices.map(({ href, title, description, icon: Icon }) => (
         <Link
           key={href}
           href={href}
           className={cn(
-            "group flex flex-col gap-3 rounded-xl border border-border bg-card p-6 text-left shadow-sm transition-colors",
-            "hover:border-ring hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+            "group flex flex-col gap-4 rounded-2xl border border-border/60 bg-white p-8 text-left shadow-[0_4px_24px_rgba(15,23,42,0.06)] transition-all",
+            "hover:border-blue-200 hover:shadow-[0_8px_32px_rgba(59,130,246,0.12)] focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:outline-none"
           )}
         >
-          <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-foreground transition-colors group-hover:bg-background">
-            <Icon className="size-5" aria-hidden />
+          <span className="flex size-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+            <Icon className="size-5" aria-hidden strokeWidth={1.75} />
           </span>
-          <div className="space-y-1.5">
-            <h2 className="text-base leading-snug font-semibold text-foreground">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold leading-snug text-foreground">
               {title}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">

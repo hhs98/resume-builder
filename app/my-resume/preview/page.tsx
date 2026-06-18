@@ -9,7 +9,7 @@ export default function PreviewPage() {
   if (!localDraft) return null
 
   return (
-    <div className="min-h-screen bg-muted/30 py-8 px-4 sm:py-12 sm:px-6 lg:px-8 print:p-0 print:bg-white">
+    <div className="light-surface min-h-screen bg-muted/30 py-8 px-4 sm:py-12 sm:px-6 lg:px-8 print:bg-white print:p-0">
       <div 
         id="resume-print-preview"
         className="mx-auto max-w-[210mm] shadow-2xl print:shadow-none"

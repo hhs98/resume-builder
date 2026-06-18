@@ -201,6 +201,49 @@ export function getFullName(draft: ResumeDraft) {
     .join(" ")
 }
 
+export type HeadingContactErrors = Partial<
+  Record<keyof ResumeDraft["contact"], string>
+>
+
+export function validateHeadingContact(
+  contact: ResumeDraft["contact"]
+): HeadingContactErrors {
+  const errors: HeadingContactErrors = {}
+
+  if (!contact.givenName.trim()) {
+    errors.givenName = "Name is required."
+  }
+  if (!contact.familyName.trim()) {
+    errors.familyName = "Surname is required."
+  }
+  if (!contact.profession.trim()) {
+    errors.profession = "Professional title is required."
+  }
+  if (!contact.city.trim()) {
+    errors.city = "City is required."
+  }
+  if (!contact.postalCode.trim()) {
+    errors.postalCode = "Zip code is required."
+  }
+  if (!contact.division.trim()) {
+    errors.division = "Division is required."
+  }
+  if (!contact.phone.trim()) {
+    errors.phone = "Phone number is required."
+  }
+  if (!contact.email.trim()) {
+    errors.email = "Email address is required."
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim())) {
+    errors.email = "Please enter a valid email address."
+  }
+
+  return errors
+}
+
+export function isHeadingContactValid(contact: ResumeDraft["contact"]) {
+  return Object.keys(validateHeadingContact(contact)).length === 0
+}
+
 export function getContactLocation(draft: ResumeDraft) {
   const parts = [
     draft.contact.city,
@@ -283,6 +326,131 @@ export function getEducationLevelLabel(value: string) {
   return EDUCATION_LEVEL_LABELS[value] ?? value
 }
 
+export function hasReferenceContent(ref: ResumeReference): boolean {
+  return Boolean(
+    ref.name.trim() ||
+      ref.designation.trim() ||
+      ref.organization.trim() ||
+      ref.phone.trim() ||
+      ref.email.trim() ||
+      ref.address.trim()
+  )
+}
+
+export function isReferenceComplete(ref: ResumeReference): boolean {
+  return Boolean(
+    ref.name.trim() &&
+      ref.designation.trim() &&
+      ref.organization.trim() &&
+      ref.phone.trim()
+  )
+}
+
+export function hasCompleteReferences(draft: ResumeDraft): boolean {
+  return draft.references.some(isReferenceComplete)
+}
+
+export function hasHeadingContent(draft: ResumeDraft): boolean {
+  const c = draft.contact
+  return Boolean(
+    c.givenName.trim() ||
+      c.familyName.trim() ||
+      c.profession.trim() ||
+      c.city.trim() ||
+      c.postalCode.trim() ||
+      c.division.trim() ||
+      c.phone.trim() ||
+      c.email.trim() ||
+      c.photoDataUrl
+  )
+}
+
+export function hasWorkHistoryItemContent(work: WorkHistoryItem): boolean {
+  return Boolean(
+    work.jobTitle.trim() ||
+      work.employer.trim() ||
+      work.location.trim() ||
+      work.responsibilities.trim() ||
+      work.startMonth ||
+      work.startYear ||
+      work.endMonth ||
+      work.endYear
+  )
+}
+
+export function hasWorkHistoryContent(draft: ResumeDraft): boolean {
+  return draft.workHistory.some(hasWorkHistoryItemContent)
+}
+
+export function hasEducationContent(draft: ResumeDraft): boolean {
+  const e = draft.education
+  return Boolean(
+    e.educationLevel.trim() ||
+      e.institution.trim() ||
+      e.institutionLocation.trim() ||
+      e.degree.trim() ||
+      e.fieldOfStudy.trim() ||
+      e.graduationMonth ||
+      e.graduationYear
+  )
+}
+
+export function hasSkillsContent(draft: ResumeDraft): boolean {
+  return draft.skills.length > 0
+}
+
+export function hasLanguagesContent(draft: ResumeDraft): boolean {
+  return draft.languages.length > 0
+}
+
+export function hasSummaryContent(draft: ResumeDraft): boolean {
+  return draft.summary.trim().length > 0
+}
+
+export function hasReferencesContent(draft: ResumeDraft): boolean {
+  return draft.references.some(hasReferenceContent)
+}
+
+export function getPreviewWorkHistory(draft: ResumeDraft): WorkHistoryItem[] {
+  return draft.workHistory.filter(hasWorkHistoryItemContent)
+}
+
+export function getPreviewReferences(draft: ResumeDraft): ResumeReference[] {
+  return draft.references.filter(hasReferenceContent)
+}
+
+export function getPreviewLanguages(draft: ResumeDraft): ResumeLanguage[] {
+  return draft.languages.filter((language) => language.name.trim())
+}
+
+export function getPreviewSkills(draft: ResumeDraft): ResumeSkill[] {
+  return draft.skills.filter((skill) => skill.name.trim())
+}
+
+export function hasPreviewWorkHistory(draft: ResumeDraft): boolean {
+  return getPreviewWorkHistory(draft).length > 0
+}
+
+export function hasPreviewReferences(draft: ResumeDraft): boolean {
+  return getPreviewReferences(draft).length > 0
+}
+
+export function hasPreviewLanguages(draft: ResumeDraft): boolean {
+  return getPreviewLanguages(draft).length > 0
+}
+
+export function hasPreviewSkills(draft: ResumeDraft): boolean {
+  return getPreviewSkills(draft).length > 0
+}
+
+export function hasPreviewContact(draft: ResumeDraft): boolean {
+  return Boolean(
+    getContactLocation(draft) ||
+      draft.contact.phone.trim() ||
+      draft.contact.email.trim()
+  )
+}
+
 export function computeResumeCompleteness(draft: ResumeDraft): number {
   const checks = [
     Boolean(draft.contact.email.trim()),
@@ -295,7 +463,7 @@ export function computeResumeCompleteness(draft: ResumeDraft): number {
     Boolean(draft.education.educationLevel.trim()),
     draft.skills.length > 0,
     draft.summary.trim().length >= 40,
-    draft.references.length > 0,
+    hasCompleteReferences(draft),
     draft.languages.length > 0,
   ]
   const done = checks.filter(Boolean).length
@@ -306,13 +474,13 @@ export const FINALIZE_SECTIONS = [
   {
     href: "/new",
     label: "Heading",
-    isComplete: (d: ResumeDraft) =>
-      Boolean(d.contact.email.trim()) &&
-      Boolean(d.contact.givenName.trim() || d.contact.familyName.trim()),
+    hasContent: hasHeadingContent,
+    isComplete: (d: ResumeDraft) => isHeadingContactValid(d.contact),
   },
   {
     href: "/new/work-history",
     label: "Work history",
+    hasContent: hasWorkHistoryContent,
     isComplete: (d: ResumeDraft) =>
       Boolean(
         d.workHistory[0].jobTitle.trim() && d.workHistory[0].employer.trim()
@@ -321,26 +489,31 @@ export const FINALIZE_SECTIONS = [
   {
     href: "/new/education",
     label: "Education",
+    hasContent: hasEducationContent,
     isComplete: (d: ResumeDraft) => Boolean(d.education.educationLevel.trim()),
   },
   {
     href: "/new/skills",
     label: "Skills",
+    hasContent: hasSkillsContent,
     isComplete: (d: ResumeDraft) => d.skills.length > 0,
   },
   {
     href: "/new/languages",
     label: "Languages",
+    hasContent: hasLanguagesContent,
     isComplete: (d: ResumeDraft) => d.languages.length > 0,
   },
   {
     href: "/new/summary",
     label: "Summary",
+    hasContent: hasSummaryContent,
     isComplete: (d: ResumeDraft) => d.summary.trim().length >= 40,
   },
   {
     href: "/new/references",
     label: "References",
-    isComplete: (d: ResumeDraft) => d.references.length > 0,
+    hasContent: hasReferencesContent,
+    isComplete: (d: ResumeDraft) => hasCompleteReferences(d),
   },
 ] as const

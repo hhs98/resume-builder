@@ -1,32 +1,39 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
-import { Lightbulb, Sparkles, Star, X } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  ClipboardList,
+  Lightbulb,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react"
 
+import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
 import { Button } from "@/components/ui/button"
-import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
 import type { ResumeSkill } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
 
-const POPULAR_TITLES_INITIAL = [
+const SUGGESTED_ROLES = [
+  "Customer Service",
   "Cashier",
-  "Customer Service Representative",
-  "Manager",
-  "Server",
-  "Retail",
+  "Sales Associate",
+  "Store Manager",
 ] as const
 
-const POPULAR_TITLES_MORE = [
-  "Sales Associate",
+const SUGGESTED_ROLES_MORE = [
   "Barista",
   "Warehouse Worker",
   "Administrative Assistant",
   "Nurse",
   "Teacher",
+  "Server",
 ] as const
 
 const PREWRITTEN_EXAMPLES = [
@@ -56,41 +63,17 @@ function newSkillId() {
   return crypto.randomUUID()
 }
 
-function StarRating({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (n: number) => void
-}) {
-  return (
-    <div className="flex gap-0.5" role="group">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          className="rounded p-0.5 text-muted-foreground transition-colors hover:text-amber-500 focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`${n} out of 5`}
-        >
-          <Star
-            className={cn(
-              "size-4",
-              n <= value && "fill-amber-400 text-amber-400"
-            )}
-          />
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function SkillsStep() {
   const { draft, patchDraft } = useResumeDraft()
   const skills = draft.skills
   const [search, setSearch] = useState("")
-  const [popularExpanded, setPopularExpanded] = useState(false)
+  const [activeRole, setActiveRole] = useState<string>("Customer Service")
   const [customDraft, setCustomDraft] = useState("")
+  const [showMoreRoles, setShowMoreRoles] = useState(false)
+
+  const visibleSuggestedRoles = showMoreRoles
+    ? [...SUGGESTED_ROLES, ...SUGGESTED_ROLES_MORE]
+    : [...SUGGESTED_ROLES]
 
   function setSkills(next: ResumeSkill[]) {
     patchDraft({ skills: next })
@@ -120,10 +103,6 @@ export function SkillsStep() {
     setSkills(skills.filter((s) => s.id !== id))
   }
 
-  function setRating(id: string, rating: number) {
-    setSkills(skills.map((s) => (s.id === id ? { ...s, rating } : s)))
-  }
-
   function addCustomFromTextarea() {
     const parts = customDraft
       .split(/[,;\n]+/)
@@ -141,213 +120,228 @@ export function SkillsStep() {
     setCustomDraft("")
   }
 
-  function applyPopularTitle(title: string) {
-    setSearch(title)
-  }
-
-  const popularTitles = popularExpanded
-    ? [...POPULAR_TITLES_INITIAL, ...POPULAR_TITLES_MORE]
-    : [...POPULAR_TITLES_INITIAL]
-
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <header className="max-w-2xl space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-balance text-foreground md:text-3xl">
-            What skills would you like to highlight?
-          </h1>
-          <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-            Choose from our pre-written examples below or write your own.
-          </p>
-        </header>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="shrink-0 gap-1.5 self-start text-muted-foreground hover:text-foreground sm:self-auto"
-        >
-          <Lightbulb className="size-4" aria-hidden />
-          Tips
-        </Button>
-      </div>
+    <div className="min-h-full bg-[#f8f9fb]">
+      <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 sm:py-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <header className="max-w-2xl space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground md:text-3xl">
+              What skills would you like to highlight?
+            </h1>
+            <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
+              Choose from our pre-written examples below or write your own.
+            </p>
+          </header>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 shrink-0 gap-1.5 self-start rounded-full border-blue-200 bg-white px-4 text-blue-600 shadow-none hover:bg-blue-50 sm:self-auto"
+          >
+            <Lightbulb className="size-4" aria-hidden />
+            Tips
+          </Button>
+        </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-2 lg:items-start">
-        <div className="min-h-0 min-w-0 space-y-8">
-          <Field>
-            <FieldLabel
-              htmlFor="skillSearch"
-              className="font-normal text-muted-foreground"
-            >
-              Search by job title for pre-written examples
-            </FieldLabel>
-            <Input
-              id="skillSearch"
-              name="skillSearch"
-              placeholder="Title, industry, keyword"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search pre-written skill examples"
-            />
-          </Field>
-
-          <section className="space-y-3">
-            <h2 className="text-sm font-medium text-foreground">
-              Popular Job Titles
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {popularTitles.map((title) => (
-                <Button
-                  key={title}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-full font-normal"
-                  onClick={() => applyPopularTitle(title)}
-                >
-                  {title}
-                </Button>
-              ))}
-              {!popularExpanded ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-muted-foreground"
-                  onClick={() => setPopularExpanded(true)}
-                >
-                  + See more
-                </Button>
-              ) : null}
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start xl:grid-cols-[1fr_380px]">
+          <div className="min-w-0 space-y-6">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                id="skillSearch"
+                placeholder="Search for skills (e.g. Project Management, SQL)"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-12 rounded-xl border border-border/70 bg-white pl-10 text-sm text-foreground shadow-none placeholder:text-[#9ca3af]"
+                aria-label="Search for skills"
+              />
             </div>
-          </section>
 
-          <section className="flex min-h-0 flex-col space-y-3">
-            <h2 className="text-sm font-medium text-foreground">
-              Ready to use examples
-            </h2>
-            {filteredExamples.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No examples match your search. Try another keyword or add your
-                own in the editor.
-              </p>
-            ) : (
-              <div className="max-h-[min(28rem,55vh)] overflow-y-auto overscroll-contain pr-1">
-                <ul className="grid gap-2">
-                  {filteredExamples.map((example) => {
+            <section className="space-y-3">
+              <h2 className="text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                Suggested Roles
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {visibleSuggestedRoles.map((role) => {
+                  const active = activeRole === role
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setActiveRole(role)}
+                      className={cn(
+                        "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
+                        active
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "border-border/70 bg-white text-foreground hover:border-blue-200"
+                      )}
+                    >
+                      {role}
+                    </button>
+                  )
+                })}
+              </div>
+              {SUGGESTED_ROLES_MORE.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowMoreRoles((open) => !open)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
+                  aria-expanded={showMoreRoles}
+                >
+                  {showMoreRoles ? "Show less" : "Show more"}
+                  <ChevronDown
+                    className={cn(
+                      "size-3.5 transition-transform",
+                      showMoreRoles && "rotate-180"
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              ) : null}
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-border/60 bg-white">
+              <div className="border-b border-border/60 px-5 py-4">
+                <h2 className="text-base font-semibold text-foreground">
+                  Ready to Use Examples
+                </h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Click to quickly add these to your resume
+                </p>
+              </div>
+              <ul className="max-h-[min(28rem,50vh)] divide-y divide-border/60 overflow-y-auto overscroll-contain">
+                {filteredExamples.length === 0 ? (
+                  <li className="px-5 py-8 text-center text-sm text-muted-foreground">
+                    No examples match your search.
+                  </li>
+                ) : (
+                  filteredExamples.map((example) => {
                     const added = skillNamesLower.has(example.toLowerCase())
                     return (
                       <li
                         key={example}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2"
+                        className="flex items-center justify-between gap-4 px-5 py-4"
                       >
                         <span className="min-w-0 text-sm leading-snug text-foreground">
                           {example}
                         </span>
-                        <Button
+                        <button
                           type="button"
-                          variant={added ? "secondary" : "outline"}
-                          size="sm"
-                          className="h-7 shrink-0 px-2 text-xs"
                           disabled={added}
                           onClick={() => addSkill(example)}
+                          className={cn(
+                            "inline-flex shrink-0 items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                            added
+                              ? "cursor-default border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : "border-blue-500 text-blue-600 hover:bg-blue-50"
+                          )}
                         >
+                          {added ? (
+                            <Check className="size-3.5" aria-hidden />
+                          ) : (
+                            <Plus className="size-3.5" aria-hidden />
+                          )}
                           {added ? "Added" : "ADD"}
-                        </Button>
+                        </button>
                       </li>
                     )
-                  })}
-                </ul>
+                  })
+                )}
+              </ul>
+            </section>
+          </div>
+
+          <div className="min-w-0 space-y-5 lg:sticky lg:top-6">
+            <div className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-foreground">
+                  Custom Skill
+                </h2>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700"
+                >
+                  <Sparkles className="size-3.5" aria-hidden />
+                  Enhance with AI
+                </button>
               </div>
-            )}
-          </section>
-        </div>
-
-        <div className="min-w-0 space-y-8 lg:sticky lg:top-6">
-          <section className="space-y-3">
-            <h2 className="text-sm font-medium text-foreground">Text Editor</h2>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-fit gap-1.5"
-            >
-              <Sparkles className="size-4" aria-hidden />
-              Enhance with AI
-            </Button>
-            <Textarea
-              id="customSkills"
-              name="customSkills"
-              className="min-h-[120px]"
-              placeholder="Add your skills here."
-              aria-label="Add your skills"
-              value={customDraft}
-              onChange={(e) => setCustomDraft(e.target.value)}
-              rows={5}
-            />
-            <Button type="button" size="sm" onClick={addCustomFromTextarea}>
-              Add to list
-            </Button>
-          </section>
-
-          <section className="space-y-4 rounded-lg border border-border bg-card p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-sm font-medium text-foreground">
-                Skills Rating
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Skills:{" "}
-                <span className="font-medium text-foreground">
-                  {skills.length}
-                </span>
-              </p>
+              <Textarea
+                id="customSkills"
+                className="mt-4 min-h-28 resize-none rounded-xl border border-border/70 bg-[#f8f9fb] text-sm text-foreground shadow-none"
+                placeholder="Type a skill and hit enter..."
+                aria-label="Add custom skill"
+                value={customDraft}
+                onChange={(e) => setCustomDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    addCustomFromTextarea()
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                className="mt-4 h-11 w-full rounded-xl bg-blue-600 font-semibold hover:bg-blue-700"
+                onClick={addCustomFromTextarea}
+              >
+                Add to list
+              </Button>
             </div>
 
-            <div className="space-y-1">
+            <div className="rounded-2xl border border-border/60 bg-white p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-foreground">
+                  Selected Skills
+                </h2>
+                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600">
+                  Skills: {skills.length}
+                </span>
+              </div>
+
               {skills.length === 0 ? (
-                <p className="py-4 text-sm text-muted-foreground">
-                  Add skills from the examples or your own text to rate them
-                  here.
-                </p>
+                <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-border/50 bg-[#f8f9fb]/80 px-4 py-10 text-center">
+                  <ClipboardList
+                    className="size-8 text-muted-foreground/50"
+                    aria-hidden
+                  />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No skills added yet. Select from the left or type above.
+                  </p>
+                </div>
               ) : (
-                <ul className="max-h-[min(24rem,50vh)] space-y-3 overflow-y-auto overscroll-contain pr-1">
-                  {skills.map((s) => (
+                <ul className="mt-4 space-y-2">
+                  {skills.map((skill) => (
                     <li
-                      key={s.id}
-                      className="flex flex-col gap-2 rounded-md border border-border bg-background/50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      key={skill.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-[#f8f9fb] px-3 py-2.5"
                     >
-                      <span className="text-sm text-foreground">{s.name}</span>
-                      <div className="flex items-center gap-3">
-                        <StarRating
-                          value={s.rating}
-                          onChange={(n) => setRating(s.id, n)}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => removeSkill(s.id)}
-                          aria-label={`Remove ${s.name}`}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </div>
+                      <span className="min-w-0 text-sm text-foreground">
+                        {skill.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill.id)}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${skill.name}`}
+                      >
+                        <X className="size-4" />
+                      </button>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          </section>
-
-          <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <Button variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/new/education">Back</Link>
-            </Button>
-            <Button asChild className="w-full sm:w-auto">
-              <Link href="/new/languages">Next: Languages</Link>
-            </Button>
           </div>
         </div>
+
+        <BuilderStepFooter
+          backHref="/new/education"
+          nextHref="/new/languages"
+          nextLabel="Next: Languages"
+        />
       </div>
     </div>
   )

@@ -4,10 +4,22 @@ import { Phone } from "lucide-react"
 
 import {
   formatGraduationCompact,
+  formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getPreviewLanguages,
+  getPreviewReferences,
+  getPreviewSkills,
+  getPreviewWorkHistory,
+  hasEducationContent,
+  hasPreviewContact,
+  hasPreviewLanguages,
+  hasPreviewReferences,
+  hasPreviewSkills,
+  hasPreviewWorkHistory,
+  hasSummaryContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -30,23 +42,15 @@ export function MinimalTwoColumnPreview({
   const address = getContactLocation(draft)
   const gradDate = formatGraduationCompact(draft)
 
-  const workHistory = draft.workHistory || []
+  const workHistory = getPreviewWorkHistory(draft)
+  const skills = getPreviewSkills(draft)
+  const languages = getPreviewLanguages(draft)
+  const references = getPreviewReferences(draft)
 
-  const hasWork =
-    Array.isArray(workHistory) &&
-    workHistory.some(
-      (w) =>
-        w?.employer?.trim() ||
-        w?.jobTitle?.trim() ||
-        w?.responsibilities?.trim()
-    )
-
-  const hasContact =
-    address || draft.contact.phone.trim() || draft.contact.email.trim()
-
-  const hasSummary = draft.summary.trim().length > 0
-
-  const hasSkills = draft.skills.length > 0
+  const hasWork = hasPreviewWorkHistory(draft)
+  const hasContact = hasPreviewContact(draft)
+  const hasSummary = hasSummaryContent(draft)
+  const hasSkills = hasPreviewSkills(draft)
 
   const degreeLine =
     draft.education.degree.trim() !== ""
@@ -60,14 +64,9 @@ export function MinimalTwoColumnPreview({
     .filter(Boolean)
     .join(" · ")
 
-  const hasEducation =
-    draft.education.institution.trim() ||
-    degreeLine.trim() ||
-    draft.education.fieldOfStudy.trim() ||
-    educationMetaLine
-
-  const hasReferences = (draft.references || []).length > 0
-  const hasLanguages = (draft.languages || []).length > 0
+  const hasEducation = hasEducationContent(draft)
+  const hasReferences = hasPreviewReferences(draft)
+  const hasLanguages = hasPreviewLanguages(draft)
 
   const isEmpty =
     !hasContact &&
@@ -185,7 +184,7 @@ export function MinimalTwoColumnPreview({
             <section>
               <SectionHeader title="Skills" />
               <ul className="mt-3 space-y-2">
-                {draft.skills.map((skill) => (
+                {skills.map((skill) => (
                   <li key={skill.id} className="flex justify-between text-[10px]">
                     {skill.name}
                     <SegmentedRating value={skill.rating} />
@@ -199,7 +198,7 @@ export function MinimalTwoColumnPreview({
             <section>
               <SectionHeader title="Languages" />
               <ul className="mt-3 space-y-2">
-                {(draft.languages || []).map((lang) => (
+                {languages.map((lang) => (
                   <li key={lang.id} className="flex justify-between text-[10px]">
                     {lang.name}
                     <SegmentedRating value={lang.rating} max={4} />
@@ -226,7 +225,7 @@ export function MinimalTwoColumnPreview({
             <section>
               <SectionHeader title="References" />
               <div className="mt-3 space-y-4">
-                {(draft.references || []).map((ref) => (
+                {references.map((ref) => (
                   <div key={ref.id} className="space-y-0.5">
                     <p className="font-bold text-[10px]">{ref.name}</p>
                     <p className="text-[9px] italic">
@@ -276,20 +275,4 @@ function SegmentedRating({ value, max = 5 }: { value: number; max?: number }) {
       })}
     </span>
   )
-}
-
-function formatWorkItemDates(work: any) {
-  const start =
-    work.startMonth && work.startYear
-      ? `${work.startMonth} ${work.startYear}`
-      : ""
-
-  const end = work.currentJob
-    ? "Present"
-    : work.endMonth && work.endYear
-      ? `${work.endMonth} ${work.endYear}`
-      : ""
-
-  if (start && end) return `${start} - ${end}`
-  return start || end || ""
 }

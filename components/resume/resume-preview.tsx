@@ -7,6 +7,13 @@ import {
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getPreviewSkills,
+  getPreviewWorkHistory,
+  hasEducationContent,
+  hasPreviewContact,
+  hasPreviewSkills,
+  hasPreviewWorkHistory,
+  hasSummaryContent,
   type ResumeDraft,
   type ResumeTemplateId,
 } from "@/lib/resume-draft"
@@ -36,7 +43,8 @@ export function ResumePreview({
     .map((s) => s.trim())
     .filter(Boolean)
 
-  const workHistory = draft.workHistory || []
+  const workHistory = getPreviewWorkHistory(draft)
+  const skills = getPreviewSkills(draft)
 
   const gradDate = formatMonthYear(
     draft.education.graduationMonth,
@@ -51,22 +59,11 @@ export function ResumePreview({
     draft.education.institutionLocation,
   ].filter((s) => s.trim())
 
-  const hasWork = workHistory.some(
-    (work) =>
-      work.jobTitle.trim() ||
-      work.employer.trim() ||
-      work.responsibilities.trim() ||
-      work.startMonth ||
-      work.startYear ||
-      work.endMonth ||
-      work.endYear
-  )
-
-  const hasEducation =
-    draft.education.educationLevel.trim() || educationLines.length > 0
-
-  const hasSkills = draft.skills.length > 0
-  const hasSummary = draft.summary.trim().length > 0
+  const hasWork = hasPreviewWorkHistory(draft)
+  const hasEducation = hasEducationContent(draft)
+  const hasSkills = hasPreviewSkills(draft)
+  const hasSummary = hasSummaryContent(draft)
+  const hasContact = hasPreviewContact(draft)
 
   if (templateId === "executive") {
     return (
@@ -114,7 +111,7 @@ export function ResumePreview({
               {draft.contact.profession}
             </p>
           ) : null}
-          {contactLine.length > 0 ? (
+          {contactLine.length > 0 && hasContact ? (
             <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-neutral-600">
               {contactLine.map((item, i) => (
                 <span key={item}>
@@ -209,7 +206,7 @@ export function ResumePreview({
       {hasSkills ? (
         <PreviewSection title="Skills">
           <ul className="flex flex-wrap gap-2">
-            {draft.skills.map((skill) => (
+            {skills.map((skill) => (
               <li
                 key={skill.id}
                 className="rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-800"

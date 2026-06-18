@@ -2,11 +2,22 @@
 
 import {
   formatGraduationCompact,
-  formatWorkDatesCompact,
+  formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getPreviewLanguages,
+  getPreviewReferences,
+  getPreviewSkills,
+  getPreviewWorkHistory,
+  hasEducationContent,
+  hasPreviewContact,
+  hasPreviewLanguages,
+  hasPreviewReferences,
+  hasPreviewSkills,
+  hasPreviewWorkHistory,
+  hasSummaryContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -29,7 +40,10 @@ export function ModernGoldPreview({
   const address = getContactLocation(draft)
   const gradDate = formatGraduationCompact(draft)
 
-  const workHistory = draft.workHistory || []
+  const workHistory = getPreviewWorkHistory(draft)
+  const skills = getPreviewSkills(draft)
+  const languages = getPreviewLanguages(draft)
+  const references = getPreviewReferences(draft)
 
   const educationTitle =
     draft.education.degree.trim() !== ""
@@ -44,27 +58,13 @@ export function ModernGoldPreview({
     .filter(Boolean)
     .join(", ")
 
-  const hasWork =
-    Array.isArray(workHistory) &&
-    workHistory.some(
-      (w) =>
-        w?.jobTitle?.trim() ||
-        w?.employer?.trim() ||
-        w?.responsibilities?.trim()
-    )
-
-  const hasEducation =
-    educationTitle.trim() ||
-    educationOrg.trim() ||
-    gradDate ||
-    draft.education.educationLevel.trim()
-
-  const hasSkills = draft.skills.length > 0
-  const hasSummary = draft.summary.trim().length > 0
-  const hasContact =
-    address || draft.contact.phone.trim() || draft.contact.email.trim()
-  const hasReferences = (draft.references || []).length > 0
-  const hasLanguages = (draft.languages || []).length > 0
+  const hasWork = hasPreviewWorkHistory(draft)
+  const hasEducation = hasEducationContent(draft)
+  const hasSkills = hasPreviewSkills(draft)
+  const hasSummary = hasSummaryContent(draft)
+  const hasContact = hasPreviewContact(draft)
+  const hasReferences = hasPreviewReferences(draft)
+  const hasLanguages = hasPreviewLanguages(draft)
 
   const isEmpty =
     !hasSummary && !hasWork && !hasEducation && !hasSkills && !hasContact && !hasReferences && !hasLanguages
@@ -221,7 +221,7 @@ export function ModernGoldPreview({
           <section>
             <SectionHeading title="Skills" />
             <ul className="mt-4 grid grid-cols-3 gap-x-6 gap-y-4">
-              {draft.skills.map((skill) => (
+              {skills.map((skill) => (
                 <li key={skill.id} className="min-w-0">
                   <p className="text-[10px] font-medium text-neutral-900">
                     {skill.name}
@@ -246,7 +246,7 @@ export function ModernGoldPreview({
           <section>
             <SectionHeading title="Languages" />
             <ul className="mt-4 grid grid-cols-3 gap-x-6 gap-y-4">
-              {(draft.languages || []).map((lang) => (
+              {languages.map((lang) => (
                 <li key={lang.id} className="min-w-0">
                   <p className="text-[10px] font-medium text-neutral-900">
                     {lang.name}
@@ -302,7 +302,7 @@ export function ModernGoldPreview({
           <section>
             <SectionHeading title="References" />
             <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-6">
-              {(draft.references || []).map((ref) => (
+              {references.map((ref) => (
                 <div key={ref.id} className="space-y-1">
                   <p className="font-bold text-neutral-900">{ref.name}</p>
                   <p className="text-[10px] text-neutral-800">
@@ -339,20 +339,4 @@ function SectionHeading({ title }: { title: string }) {
       <hr className="mt-2 border-neutral-300" />
     </div>
   )
-}
-
-function formatWorkItemDates(work: any) {
-  const start =
-    work.startMonth && work.startYear
-      ? `${work.startMonth} ${work.startYear}`
-      : ""
-
-  const end = work.currentJob
-    ? "Present"
-    : work.endMonth && work.endYear
-      ? `${work.endMonth} ${work.endYear}`
-      : ""
-
-  if (start && end) return `${start} - ${end}`
-  return start || end || ""
 }

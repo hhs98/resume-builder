@@ -2,12 +2,22 @@
 
 import {
   formatGraduationCompact,
-  formatWorkDatesCompact,
   formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getPreviewLanguages,
+  getPreviewReferences,
+  getPreviewSkills,
+  getPreviewWorkHistory,
+  hasEducationContent,
+  hasPreviewContact,
+  hasPreviewLanguages,
+  hasPreviewReferences,
+  hasPreviewSkills,
+  hasPreviewWorkHistory,
+  hasSummaryContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -32,7 +42,10 @@ export function ClassicRedPreview({
   const address = getContactLocation(draft)
   const gradDate = formatGraduationCompact(draft)
 
-  const workHistory = draft.workHistory || []
+  const workHistory = getPreviewWorkHistory(draft)
+  const skills = getPreviewSkills(draft)
+  const languages = getPreviewLanguages(draft)
+  const references = getPreviewReferences(draft)
 
   const educationDegreeLine = [
     draft.education.degree.trim()
@@ -51,15 +64,13 @@ export function ClassicRedPreview({
     .filter((s) => s.trim())
     .join(", ")
 
-  const hasContact =
-    address || draft.contact.phone.trim() || draft.contact.email.trim()
-
-  const hasSummary = draft.summary.trim().length > 0
-  const hasEducation = educationDegreeLine.trim() || educationOrgLine.trim()
-  const hasSkills = draft.skills.length > 0
-  const hasWork = workHistory.length > 0
-  const hasReferences = (draft.references || []).length > 0
-  const hasLanguages = (draft.languages || []).length > 0
+  const hasContact = hasPreviewContact(draft)
+  const hasSummary = hasSummaryContent(draft)
+  const hasEducation = hasEducationContent(draft)
+  const hasSkills = hasPreviewSkills(draft)
+  const hasWork = hasPreviewWorkHistory(draft)
+  const hasReferences = hasPreviewReferences(draft)
+  const hasLanguages = hasPreviewLanguages(draft)
 
   const isEmpty =
     !hasContact &&
@@ -191,7 +202,7 @@ export function ClassicRedPreview({
           <section>
             <SectionHeader title="Skills" />
             <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
-              {draft.skills.map((skill) => (
+              {skills.map((skill) => (
                 <li
                   key={skill.id}
                   className="flex items-center gap-1.5 text-[10px] text-neutral-900"
@@ -212,7 +223,7 @@ export function ClassicRedPreview({
           <section>
             <SectionHeader title="Languages" />
             <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
-              {(draft.languages || []).map((lang) => (
+              {languages.map((lang) => (
                 <li
                   key={lang.id}
                   className="flex items-center gap-1.5 text-[10px] text-neutral-900"
@@ -285,7 +296,7 @@ export function ClassicRedPreview({
           <section>
             <SectionHeader title="References" />
             <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-6">
-              {(draft.references || []).map((ref) => (
+              {references.map((ref) => (
                 <div key={ref.id} className="space-y-1">
                   <p className="text-[11px] font-bold text-neutral-900">
                     {ref.name}
