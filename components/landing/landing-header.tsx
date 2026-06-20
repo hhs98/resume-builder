@@ -1,26 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { Bell, MessageCircle, Search } from "lucide-react"
+import Image from "next/image"
 
 import { Input } from "@/components/ui/input"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { getFullName } from "@/lib/resume-draft"
-import Image from "next/image"
-
-function JobMediaLogo() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <Image src="/logo.png" alt="logo" width={120} height={45} />
-    </div>
-  )
-}
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "JM"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-} 
 
 function getGreetingName(fullName: string) {
   const trimmed = fullName.trim()
@@ -30,33 +16,40 @@ function getGreetingName(fullName: string) {
 
 export function LandingHeader() {
   const { draft } = useResumeDraft()
-  const fullName = getFullName(draft)
-  const greetingName = getGreetingName(fullName)
+  const greetingName = getGreetingName(getFullName(draft))
 
   return (
     <header className="border-b border-border/60 bg-background">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-4 px-6 py-4 lg:grid-cols-[auto_1fr_auto]">
-        <div className="flex items-center gap-4">
-          <JobMediaLogo />
-          <span className="text-sm font-semibold tracking-wide text-foreground">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:grid lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-4">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
+          <Link
+            href="/"
+            className="shrink-0 rounded-md focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:outline-none"
+          >
+            <Image
+              src="/logo.png"
+              alt="Job Media"
+              width={120}
+              height={45}
+              className="h-8 w-auto sm:h-9 lg:h-10"
+            />
+          </Link>
+          <span className="truncate text-sm font-extrabold tracking-wide text-foreground sm:text-base">
             MY CV
           </span>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground lg:text-base">
+        <p className="hidden text-center text-sm text-muted-foreground lg:block lg:text-base">
           {greetingName ? (
             <>
-              Let&apos;s get you started with your Resume,{" "}
-              <span className="font-medium text-foreground">
-                {greetingName}
-              </span>
+              Let&apos;s get you started with your Resume{" "}
             </>
           ) : (
             "Let's get you started with your Resume"
           )}
         </p>
 
-        <div className="flex items-center justify-end gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 md:gap-3">
           <div className="relative hidden w-full max-w-xs sm:block">
             <Search
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -84,12 +77,6 @@ export function LandingHeader() {
           >
             <Bell className="size-5" strokeWidth={1.75} />
           </button>
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white"
-            aria-label="Profile"
-          >
-            {getInitials(fullName)}
-          </span>
         </div>
       </div>
     </header>
