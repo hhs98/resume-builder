@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   Building2,
   FileText,
@@ -9,6 +10,7 @@ import {
   MapPin,
   Plus,
   Trophy,
+  X,
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
@@ -21,7 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
+import type { EducationAward } from "@/lib/resume-draft"
+import { hasEducationAwardContent } from "@/lib/resume-draft"
 import { MONTHS } from "@/lib/resume-form-constants"
 import { cn } from "@/lib/utils"
 
@@ -86,10 +91,37 @@ const selectClassName =
   "h-12 w-full rounded-xl border border-border/70 bg-white px-4 text-sm shadow-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20"
 
 const ADDITIONAL_DETAIL_TILES = [
-  { label: "Description", icon: FileText },
-  { label: "Awards", icon: Trophy },
-  { label: "Projects", icon: Link2 },
+  { key: "description" as const, label: "Description", icon: FileText },
+  { key: "awards" as const, label: "Awards", icon: Trophy },
+  { key: "projects" as const, label: "Projects", icon: Link2 },
 ] as const
+
+type DetailSection =
+  | (typeof ADDITIONAL_DETAIL_TILES)[number]["key"]
+  | "gpa"
+
+function newAward(): EducationAward {
+  return {
+    id: crypto.randomUUID(),
+    title: "",
+    issuer: "",
+    year: "",
+  }
+}
+
+function getInitialOpenSections(education: {
+  description: string
+  projectUrl: string
+  gpa: string
+  awards: EducationAward[]
+}): DetailSection[] {
+  const open: DetailSection[] = []
+  if (education.description.trim()) open.push("description")
+  if (education.awards.some(hasEducationAwardContent)) open.push("awards")
+  if (education.projectUrl.trim()) open.push("projects")
+  if (education.gpa.trim()) open.push("gpa")
+  return open
+}
 
 function FieldLabel({
   children,
@@ -115,9 +147,63 @@ export function EducationStep() {
   const { draft, patchDraft } = useResumeDraft()
   const education = draft.education
   const educationLevel = education.educationLevel || undefined
+  const [openSections, setOpenSections] = useState<DetailSection[]>(() =>
+    getInitialOpenSections(education)
+  )
 
   function updateEducation(patch: Partial<typeof education>) {
     patchDraft({ education: { ...education, ...patch } })
+  }
+
+  function isSectionOpen(section: DetailSection) {
+    return openSections.includes(section)
+  }
+
+  function toggleSection(section: DetailSection) {
+    setOpenSections((current) => {
+      const isOpen = current.includes(section)
+      if (isOpen) {
+        return current.filter((item) => item !== section)
+      }
+
+      if (section === "awards" && education.awards.length === 0) {
+        updateEducation({ awards: [newAward()] })
+      }
+
+      return [...current, section]
+    })
+  }
+
+  function updateAward(id: string, patch: Partial<EducationAward>) {
+    updateEducation({
+      awards: education.awards.map((award) =>
+        award.id === id ? { ...award, ...patch } : award
+      ),
+    })
+  }
+
+  function addAward() {
+    updateEducation({ awards: [...education.awards, newAward()] })
+  }
+
+  function removeAward(id: string) {
+    const nextAwards = education.awards.filter((award) => award.id !== id)
+    updateEducation({
+      awards: nextAwards.length > 0 ? nextAwards : [newAward()],
+    })
+  }
+
+  function sectionHasContent(section: DetailSection) {
+    switch (section) {
+      case "description":
+        return education.description.trim().length > 0
+      case "awards":
+        return education.awards.some(hasEducationAwardContent)
+      case "projects":
+        return education.projectUrl.trim().length > 0
+      case "gpa":
+        return education.gpa.trim().length > 0
+    }
   }
 
   function handleEducationLevelChange(value: string) {
@@ -390,25 +476,190 @@ export function EducationStep() {
                   </h2>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                    onClick={() => toggleSection("gpa")}
+                    aria-expanded={isSectionOpen("gpa")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
+                      isSectionOpen("gpa") || sectionHasContent("gpa")
+                        ? "text-blue-700"
+                        : "text-blue-600 hover:text-blue-700"
+                    )}
                   >
                     <Plus className="size-4" aria-hidden />
-                    Add GPA or Honours
+                    {isSectionOpen("gpa") ? "Hide GPA or Honours" : "Add GPA or Honours"}
                   </button>
                 </div>
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {ADDITIONAL_DETAIL_TILES.map(({ label, icon: Icon }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/80 bg-[#f8f9fb]/60 px-4 py-8 text-sm font-medium text-muted-foreground transition-colors hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700"
-                    >
-                      <Icon className="size-5" strokeWidth={1.75} aria-hidden />
-                      {label}
-                    </button>
-                  ))}
+                  {ADDITIONAL_DETAIL_TILES.map(({ key, label, icon: Icon }) => {
+                    const open = isSectionOpen(key)
+                    const hasContent = sectionHasContent(key)
+
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleSection(key)}
+                        aria-expanded={open}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-sm font-medium transition-colors",
+                          open || hasContent
+                            ? "border-blue-400 bg-blue-50/60 text-blue-700"
+                            : "border-border/80 bg-[#f8f9fb]/60 text-muted-foreground hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700"
+                        )}
+                      >
+                        <Icon
+                          className="size-5"
+                          strokeWidth={1.75}
+                          aria-hidden
+                        />
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
+
+                {isSectionOpen("gpa") ? (
+                  <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                    <FieldLabel>GPA or Honours</FieldLabel>
+                    <Input
+                      id="educationGpa"
+                      placeholder="e.g. 3.8/4.0 or First Class Honours"
+                      value={education.gpa}
+                      onChange={(e) => updateEducation({ gpa: e.target.value })}
+                      className={fieldClassName}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Include your GPA, class rank, or honours if they strengthen
+                      your application.
+                    </p>
+                  </div>
+                ) : null}
+
+                {isSectionOpen("description") ? (
+                  <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                    <FieldLabel>Description</FieldLabel>
+                    <Textarea
+                      id="educationDescription"
+                      placeholder="Describe coursework, achievements, or activities relevant to your education..."
+                      className="min-h-32 resize-y rounded-xl border border-border/70 bg-white px-4 py-3 text-sm shadow-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20"
+                      value={education.description}
+                      onChange={(e) =>
+                        updateEducation({ description: e.target.value })
+                      }
+                    />
+                  </div>
+                ) : null}
+
+                {isSectionOpen("awards") ? (
+                  <div className="mt-4 space-y-4 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <FieldLabel>Awards &amp; Honors</FieldLabel>
+                      <button
+                        type="button"
+                        onClick={addAward}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                      >
+                        <Plus className="size-4" aria-hidden />
+                        Add award
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {education.awards.map((award, index) => (
+                        <div
+                          key={award.id}
+                          className="space-y-3 rounded-xl border border-border/60 bg-white p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-foreground">
+                              Award {index + 1}
+                            </p>
+                            {education.awards.length > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() => removeAward(award.id)}
+                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                aria-label={`Remove award ${index + 1}`}
+                              >
+                                <X className="size-4" aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+
+                          <div>
+                            <FieldLabel required>Award title</FieldLabel>
+                            <Input
+                              id={`award-title-${award.id}`}
+                              placeholder="e.g. Dean's List"
+                              value={award.title}
+                              onChange={(e) =>
+                                updateAward(award.id, { title: e.target.value })
+                              }
+                              className={fieldClassName}
+                            />
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <FieldLabel>Issuer</FieldLabel>
+                              <Input
+                                id={`award-issuer-${award.id}`}
+                                placeholder="e.g. Stanford University"
+                                value={award.issuer}
+                                onChange={(e) =>
+                                  updateAward(award.id, {
+                                    issuer: e.target.value,
+                                  })
+                                }
+                                className={fieldClassName}
+                              />
+                            </div>
+                            <div>
+                              <FieldLabel>Year</FieldLabel>
+                              <Input
+                                id={`award-year-${award.id}`}
+                                placeholder="e.g. 2024"
+                                inputMode="numeric"
+                                value={award.year}
+                                onChange={(e) =>
+                                  updateAward(award.id, { year: e.target.value })
+                                }
+                                className={fieldClassName}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {isSectionOpen("projects") ? (
+                  <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                    <FieldLabel>Project URL</FieldLabel>
+                    <div className="relative">
+                      <Link2
+                        className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <Input
+                        id="educationProjectUrl"
+                        type="url"
+                        placeholder="https://github.com/you/project"
+                        value={education.projectUrl}
+                        onChange={(e) =>
+                          updateEducation({ projectUrl: e.target.value })
+                        }
+                        className={cn(fieldClassName, "pl-10")}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Share a link to a portfolio project, thesis, or capstone
+                      related to your education.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </form>
           </>

@@ -1,36 +1,58 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+
+import { getResumeDraftById } from "@/lib/get-resume-draft-from-db"
 
 const GOTENBERG_URL =
   process.env.GOTENBERG_URL ??
   "https://demo.gotenberg.dev/forms/chromium/convert/url"
 
-const PREVIEW_BASE_URL =
-  process.env.RESUME_PREVIEW_BASE_URL ?? "https://cv.jobmedia.com.bd"
+/** CSS selector present only after resume HTML is in the DOM. */
+const RESUME_READY_SELECTOR = "#resume-print-preview[data-resume-ready='true']"
+
+function getPreviewBaseUrl(req: Request): string {
+  if (process.env.RESUME_PREVIEW_BASE_URL) {
+    return process.env.RESUME_PREVIEW_BASE_URL.replace(/\/$/, "")
+  }
+
+  const host =
+    req.headers.get("x-forwarded-host") ?? req.headers.get("host")
+  const proto = req.headers.get("x-forwarded-proto") ?? "http"
+
+  if (host && !host.includes("localhost") && !host.startsWith("127.0.0.1")) {
+    return `${proto}://${host}`
+  }
+
+  return "https://cv.jobmedia.com.bd"
+}
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
 
-    const resume = await prisma.resume.findUnique({
-      where: { id },
-      select: { id: true },
-    })
-
-    if (!resume) {
+    const draft = await getResumeDraftById(id)
+    if (!draft) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
 
-    const previewUrl = `${PREVIEW_BASE_URL}/my-resume/preview/${id}/`
+    const previewBaseUrl = getPreviewBaseUrl(req)
+    // Server-rendered print page — resume HTML is in the initial response (no client fetch).
+    const previewUrl = `${previewBaseUrl}/my-resume/preview/${id}`
 
     const formData = new FormData()
     formData.append("url", previewUrl)
-    formData.append("waitDelay", "10s")
+    // Gotenberg: wait until the ready marker exists before printing.
+    // https://gotenberg.dev/docs/convert-with-chromium/convert-url-to-pdf
+    formData.append("waitForSelector", RESUME_READY_SELECTOR)
     formData.append("paperWidth", "8.27")
     formData.append("paperHeight", "11.7")
+    formData.append("marginTop", "0")
+    formData.append("marginBottom", "0")
+    formData.append("marginLeft", "0")
+    formData.append("marginRight", "0")
+    formData.append("printBackground", "true")
 
     const gotenbergRes = await fetch(GOTENBERG_URL, {
       method: "POST",

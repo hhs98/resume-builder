@@ -1,5 +1,6 @@
 "use client"
 
+import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
 import {
   formatGraduationCompact,
   formatWorkItemDates,
@@ -228,6 +229,12 @@ export function ExecutiveSidebarPreview({
               {gradDate && (
                 <p className="text-[10px] text-neutral-500">{gradDate}</p>
               )}
+              <EducationAdditionalDetails
+                draft={draft}
+                className="mt-2"
+                textClassName="text-[11px] text-neutral-700"
+                linkClassName="text-[11px] text-emerald-900 underline underline-offset-2"
+              />
             </div>
           </section>
         ) : null}
@@ -249,11 +256,6 @@ export function ExecutiveSidebarPreview({
                   {ref.email && (
                     <p className="text-[10px] text-neutral-600">
                       Email: {ref.email}
-                    </p>
-                  )}
-                  {ref.address && (
-                    <p className="text-[10px] text-neutral-600">
-                      {ref.address}
                     </p>
                   )}
                 </div>

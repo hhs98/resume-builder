@@ -1,0 +1,94 @@
+import { prisma } from "@/lib/prisma"
+import { parseEducationAwards, type ResumeDraft } from "@/lib/resume-draft"
+
+export async function getResumeDraftById(id: string): Promise<ResumeDraft | null> {
+  const resume = await prisma.resume.findUnique({
+    where: { id },
+    include: {
+      education: true,
+      workHistory: true,
+      skills: true,
+      languages: true,
+      references: true,
+    },
+  })
+
+  if (!resume) {
+    return null
+  }
+
+  return {
+    id: resume.id,
+    templateId: resume.templateId as ResumeDraft["templateId"],
+    contact: {
+      givenName: resume.givenName,
+      familyName: resume.familyName,
+      profession: resume.profession,
+      city: resume.city,
+      postalCode: resume.postalCode,
+      division: resume.division,
+      phone: resume.phone,
+      email: resume.email,
+      photoDataUrl: resume.photoDataUrl,
+    },
+    summary: resume.summary || "",
+    education: resume.education
+      ? {
+          educationLevel: resume.education.educationLevel,
+          institution: resume.education.institution,
+          institutionLocation: resume.education.institutionLocation,
+          degree: resume.education.degree,
+          fieldOfStudy: resume.education.fieldOfStudy,
+          graduationMonth: resume.education.graduationMonth,
+          graduationYear: resume.education.graduationYear,
+          description: resume.education.description || "",
+          projectUrl: resume.education.projectUrl || "",
+          gpa: resume.education.gpa || "",
+          awards: parseEducationAwards(resume.education.awards),
+        }
+      : {
+          educationLevel: "",
+          institution: "",
+          institutionLocation: "",
+          degree: "",
+          fieldOfStudy: "",
+          graduationMonth: "",
+          graduationYear: "",
+          description: "",
+          projectUrl: "",
+          gpa: "",
+          awards: [],
+        },
+    workHistory: resume.workHistory.map((work) => ({
+      id: work.id,
+      jobTitle: work.jobTitle,
+      employer: work.employer,
+      location: work.location,
+      remote: work.remote,
+      startMonth: work.startMonth,
+      startYear: work.startYear,
+      endMonth: work.endMonth || "",
+      endYear: work.endYear || "",
+      currentJob: work.currentJob,
+      responsibilities: work.responsibilities || "",
+    })),
+    skills: resume.skills.map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      rating: skill.rating,
+    })),
+    languages: resume.languages.map((lang) => ({
+      id: lang.id,
+      name: lang.name,
+      rating: lang.rating,
+    })),
+    references: resume.references.map((ref) => ({
+      id: ref.id,
+      name: ref.name,
+      designation: ref.designation,
+      organization: ref.organization,
+      phone: ref.phone,
+      email: ref.email,
+    })),
+  }
+}

@@ -1,14 +1,17 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import {
   ArrowLeft,
   Calendar,
+  Check,
   Lightbulb,
   MapPin,
   Plus,
   Sparkles,
   Trash2,
+  Undo2,
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
@@ -23,6 +26,12 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
+import {
+  aiErrorFromResponse,
+  parseAiResponseJson,
+  toUserFacingAiError,
+} from "@/lib/ai-errors"
+import { normalizeEnhancedResponsibilities } from "@/lib/enhance-work-history"
 import { MONTHS } from "@/lib/resume-form-constants"
 import { cn } from "@/lib/utils"
 
@@ -92,8 +101,32 @@ const EMPTY_WORK = {
   responsibilities: "",
 }
 
+function getBulletLines(text: string): string[] {
+  return normalizeEnhancedResponsibilities(text)
+    .split("\n")
+    .map((line) => line.replace(/^•\s*/, "").trim())
+    .filter(Boolean)
+}
+
+function responsibilityHasLine(responsibilities: string, line: string): boolean {
+  const target = line.trim().toLowerCase()
+  return responsibilities
+    .split("\n")
+    .map((entry) => entry.replace(/^•\s*/, "").trim().toLowerCase())
+    .includes(target)
+}
+
 export function WorkHistoryStep() {
   const { draft, patchDraft } = useResumeDraft()
+  const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null)
+  const [enhanceError, setEnhanceError] = useState<{
+    index: number
+    message: string
+  } | null>(null)
+  const [pendingSuggestionByWorkId, setPendingSuggestionByWorkId] = useState<
+    Record<string, string>
+  >({})
+  const [undoByWorkId, setUndoByWorkId] = useState<Record<string, string>>({})
 
   const workHistory =
     draft.workHistory?.length > 0 ? draft.workHistory : [EMPTY_WORK]
@@ -120,6 +153,118 @@ export function WorkHistoryStep() {
         updated.length > 0
           ? updated
           : [{ ...EMPTY_WORK, id: crypto.randomUUID() }],
+    })
+  }
+
+  async function enhanceResponsibilities(index: number) {
+    const work = workHistory[index]
+    if (!work) return
+
+    if (!work.jobTitle.trim() && !work.employer.trim()) {
+      setEnhanceError({
+        index,
+        message: "Add a job title or employer before using AI Suggest.",
+      })
+      return
+    }
+
+    setEnhanceError(null)
+    setEnhancingIndex(index)
+
+    try {
+      const response = await fetch("/api/ai/enhance-work-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobTitle: work.jobTitle,
+          employer: work.employer,
+          location: work.location,
+          remote: work.remote,
+          startMonth: work.startMonth,
+          startYear: work.startYear,
+          endMonth: work.endMonth,
+          endYear: work.endYear,
+          currentJob: work.currentJob,
+          responsibilities: work.responsibilities || "",
+        }),
+      })
+
+      const data = await parseAiResponseJson<{
+        responsibilities?: string
+        error?: string
+      }>(response)
+
+      if (!response.ok) {
+        throw new Error(
+          aiErrorFromResponse(
+            response,
+            data,
+            "We couldn't generate suggestions right now. Please try again."
+          )
+        )
+      }
+
+      if (!data.responsibilities?.trim()) {
+        throw new Error(
+          "AI didn't return any suggestions. Add a bit more detail and try again."
+        )
+      }
+
+      const normalized = normalizeEnhancedResponsibilities(data.responsibilities)
+      setPendingSuggestionByWorkId((current) => ({
+        ...current,
+        [work.id]: normalized,
+      }))
+    } catch (error) {
+      setEnhanceError({
+        index,
+        message: toUserFacingAiError(
+          error,
+          "We couldn't generate suggestions right now. Please try again."
+        ),
+      })
+    } finally {
+      setEnhancingIndex(null)
+    }
+  }
+
+  function addSingleSuggestionLine(index: number, line: string) {
+    const work = workHistory[index]
+    if (!work) return
+
+    const trimmedLine = line.trim()
+    if (!trimmedLine) return
+    if (responsibilityHasLine(work.responsibilities || "", trimmedLine)) return
+
+    const bullet = `• ${trimmedLine}`
+    const current = work.responsibilities.trim()
+
+    setUndoByWorkId((currentUndo) => {
+      if (work.id in currentUndo) return currentUndo
+      return {
+        ...currentUndo,
+        [work.id]: work.responsibilities || "",
+      }
+    })
+
+    updateWork(index, {
+      responsibilities: current ? `${current}\n${bullet}` : bullet,
+    })
+    setEnhanceError(null)
+  }
+
+  function undoSuggestion(index: number) {
+    const work = workHistory[index]
+    if (!work) return
+
+    const previous = undoByWorkId[work.id]
+    if (previous === undefined) return
+
+    updateWork(index, { responsibilities: previous })
+    setUndoByWorkId((current) => {
+      const next = { ...current }
+      delete next[work.id]
+      return next
     })
   }
 
@@ -158,6 +303,11 @@ export function WorkHistoryStep() {
           {workHistory.map((work, index) => {
             const currentJobId = `current-job-${work.id}`
             const remoteId = `remote-${work.id}`
+            const pendingSuggestion = pendingSuggestionByWorkId[work.id]
+            const canUndo = work.id in undoByWorkId
+            const suggestionLines = pendingSuggestion
+              ? getBulletLines(pendingSuggestion)
+              : []
 
             return (
               <div
@@ -365,20 +515,99 @@ export function WorkHistoryStep() {
                   </div>
 
                   <div>
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                       <p className="text-sm font-medium text-foreground">
                         Description &amp; Key Responsibilities
                       </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 gap-1.5 px-2 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                      >
-                        <Sparkles className="size-3.5" aria-hidden />
-                        AI Suggest
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={enhancingIndex === index}
+                          onClick={() => enhanceResponsibilities(index)}
+                          className="h-8 gap-1.5 px-2 text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-60"
+                        >
+                          <Sparkles className="size-3.5" aria-hidden />
+                          {enhancingIndex === index
+                            ? "Generating..."
+                            : "AI Suggest"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={!canUndo}
+                          onClick={() => undoSuggestion(index)}
+                          className="h-8 gap-1.5 px-2 text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40"
+                        >
+                          <Undo2 className="size-3.5" aria-hidden />
+                          Undo
+                        </Button>
+                      </div>
                     </div>
+                    {enhanceError?.index === index ? (
+                      <p className="mb-2 text-xs text-destructive">
+                        {enhanceError.message}
+                      </p>
+                    ) : null}
+                    {suggestionLines.length > 0 ? (
+                      <div className="mb-3 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/50">
+                        <div className="border-b border-blue-200/80 px-4 py-3">
+                          <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase">
+                            AI suggestion
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Add bullets one at a time from the list below.
+                          </p>
+                        </div>
+                        <ul className="divide-y divide-blue-200/60">
+                          {suggestionLines.map((line, lineIndex) => {
+                            const added = responsibilityHasLine(
+                              work.responsibilities || "",
+                              line
+                            )
+
+                            return (
+                              <li
+                                key={`${lineIndex}-${line}`}
+                                className="flex items-center justify-between gap-3 px-4 py-3"
+                              >
+                                <span className="flex min-w-0 gap-2 text-sm leading-snug text-foreground">
+                                  <span
+                                    className="shrink-0 text-blue-600"
+                                    aria-hidden
+                                  >
+                                    •
+                                  </span>
+                                  <span>{line}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={added}
+                                  onClick={() =>
+                                    addSingleSuggestionLine(index, line)
+                                  }
+                                  className={cn(
+                                    "inline-flex shrink-0 items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                                    added
+                                      ? "cursor-default border-emerald-200 bg-emerald-50 text-emerald-700"
+                                      : "border-blue-500 bg-white text-blue-600 hover:bg-blue-50"
+                                  )}
+                                >
+                                  {added ? (
+                                    <Check className="size-3.5" aria-hidden />
+                                  ) : (
+                                    <Plus className="size-3.5" aria-hidden />
+                                  )}
+                                  {added ? "Added" : "ADD"}
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
+                    ) : null}
                     <Textarea
                       id={`responsibilities-${index}`}
                       placeholder="Describe your impact and achievements..."

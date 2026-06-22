@@ -2,6 +2,7 @@
 
 import { Phone } from "lucide-react"
 
+import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
 import {
   formatGraduationCompact,
   formatWorkItemDates,
@@ -217,6 +218,12 @@ export function MinimalTwoColumnPreview({
                   {educationMetaLine}
                 </p>
                 <p className="italic">{degreeLine}</p>
+                <EducationAdditionalDetails
+                  draft={draft}
+                  className="mt-2"
+                  textClassName="text-[10px] text-slate-700"
+                  linkClassName="text-[10px] text-slate-800 underline underline-offset-2"
+                />
               </div>
             </section>
           )}

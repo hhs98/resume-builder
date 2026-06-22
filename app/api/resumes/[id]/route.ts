@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { parseEducationAwards } from "@/lib/resume-draft"
 
 export async function GET(
   req: Request,
@@ -47,6 +48,10 @@ export async function GET(
             fieldOfStudy: resume.education.fieldOfStudy,
             graduationMonth: resume.education.graduationMonth,
             graduationYear: resume.education.graduationYear,
+            description: resume.education.description || "",
+            projectUrl: resume.education.projectUrl || "",
+            gpa: resume.education.gpa || "",
+            awards: parseEducationAwards(resume.education.awards),
           }
         : {
             educationLevel: "",
@@ -56,6 +61,10 @@ export async function GET(
             fieldOfStudy: "",
             graduationMonth: "",
             graduationYear: "",
+            description: "",
+            projectUrl: "",
+            gpa: "",
+            awards: [],
           },
       workHistory: resume.workHistory.map((work) => ({
         id: work.id,
@@ -87,7 +96,6 @@ export async function GET(
         organization: ref.organization,
         phone: ref.phone,
         email: ref.email,
-        address: ref.address,
       })),
     }
 

@@ -28,6 +28,10 @@ export async function POST(req: Request) {
             fieldOfStudy: draft.education.fieldOfStudy,
             graduationMonth: draft.education.graduationMonth,
             graduationYear: draft.education.graduationYear,
+            description: draft.education.description || null,
+            projectUrl: draft.education.projectUrl || null,
+            gpa: draft.education.gpa || null,
+            awards: draft.education.awards,
           },
         },
         workHistory: {
@@ -63,7 +67,6 @@ export async function POST(req: Request) {
             organization: ref.organization,
             phone: ref.phone,
             email: ref.email,
-            address: ref.address,
           })),
         },
       },

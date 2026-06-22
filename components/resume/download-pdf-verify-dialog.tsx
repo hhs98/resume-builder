@@ -82,6 +82,7 @@ export function DownloadPdfVerifyDialog({
   const [isRequestingOtp, setIsRequestingOtp] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [downloadState, setDownloadState] = useState<DownloadState>("idle")
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [resumeId, setResumeId] = useState<string | null>(null)
   const [saveSucceeded, setSaveSucceeded] = useState(false)
 
@@ -97,6 +98,7 @@ export function DownloadPdfVerifyDialog({
     setIsRequestingOtp(false)
     setIsVerifying(false)
     setDownloadState("idle")
+    setDownloadError(null)
     setResumeId(null)
     setSaveSucceeded(false)
   }
@@ -121,24 +123,41 @@ export function DownloadPdfVerifyDialog({
   async function requestPdfDownload(id: string | null) {
     if (!id) {
       setDownloadState("error")
+      setDownloadError(
+        "Your resume was saved but the download link is missing. Please close this dialog and try again."
+      )
       return
     }
 
     setDownloadState("downloading")
+    setDownloadError(null)
     try {
       await onVerified(id)
       setDownloadState("done")
-    } catch {
+    } catch (error) {
       setDownloadState("error")
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "Could not download your PDF. Please try again."
+      )
     }
   }
 
-  async function finishVerificationAndDownload(id: string | null, saved: boolean) {
+  async function finishVerificationAndDownload(
+    id: string | null,
+    saved: boolean,
+    saveError?: string
+  ) {
     setStep("success")
     setSaveSucceeded(saved)
 
     if (!saved || !id) {
       setDownloadState("error")
+      setDownloadError(
+        saveError ??
+          "We verified your phone number, but couldn't save your resume. Please try again."
+      )
       return
     }
 
@@ -239,7 +258,11 @@ export function DownloadPdfVerifyDialog({
         currentId = resumeData.id
       }
 
-      await finishVerificationAndDownload(currentId, saved)
+      await finishVerificationAndDownload(
+        currentId,
+        saved,
+        resumeData.error
+      )
     } catch {
       setError("Verification failed. Try again.")
     } finally {
@@ -391,10 +414,9 @@ export function DownloadPdfVerifyDialog({
             <SuccessPanel
               name={trimmedName}
               greeting={firstName(trimmedName)}
-              resumeId={resumeId}
               saveSucceeded={saveSucceeded}
               downloadState={downloadState}
-              onRequestDownload={() => void requestPdfDownload(resumeId)}
+              downloadError={downloadError}
             />
           ) : null}
         </div>
@@ -498,20 +520,16 @@ export function DownloadPdfVerifyDialog({
 function SuccessPanel({
   name,
   greeting,
-  resumeId,
   saveSucceeded,
   downloadState,
-  onRequestDownload,
+  downloadError,
 }: {
   name: string
   greeting: string
-  resumeId: string | null
   saveSucceeded: boolean
   downloadState: DownloadState
-  onRequestDownload: () => void
+  downloadError: string | null
 }) {
-  const canDownload = Boolean(resumeId) && downloadState !== "downloading"
-
   return (
     <div className="flex flex-col items-center py-2 text-center">
       <span
@@ -559,17 +577,23 @@ function SuccessPanel({
               been downloaded successfully.
             </p>
           ) : null}
-          {downloadState === "error" && canDownload ? (
-            <Button
-              type="button"
-              size="sm"
-              className="w-full gap-1.5"
-              onClick={onRequestDownload}
+          {downloadState === "error" && downloadError ? (
+            <div
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-destructive"
+              role="alert"
             >
-              <Download className="size-4" aria-hidden />
-              Download again
-            </Button>
+              <p className="font-medium">Download failed</p>
+              <p className="mt-1 text-sm leading-relaxed">{downloadError}</p>
+            </div>
           ) : null}
+        </div>
+      ) : downloadError ? (
+        <div
+          className="mt-5 w-full rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-left text-sm text-destructive"
+          role="alert"
+        >
+          <p className="font-medium">Could not save resume</p>
+          <p className="mt-1 leading-relaxed">{downloadError}</p>
         </div>
       ) : null}
     </div>

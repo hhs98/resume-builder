@@ -78,7 +78,14 @@ export async function downloadResumePdfUrl(
   })
 
   if (!res.ok) {
-    throw new Error("Failed to generate PDF")
+    let message = "Failed to generate PDF."
+    try {
+      const data = (await res.json()) as { error?: string }
+      if (data.error) message = data.error
+    } catch {
+      // Response was not JSON — keep default message.
+    }
+    throw new Error(message)
   }
 
   const blob = await res.blob()

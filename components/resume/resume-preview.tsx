@@ -1,5 +1,6 @@
 "use client"
 
+import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
 import {
   formatMonthYear,
   formatWorkDates,
@@ -199,6 +200,7 @@ export function ResumePreview({
                 {line}
               </p>
             ))}
+            <EducationAdditionalDetails draft={draft} className="mt-2" />
           </div>
         </PreviewSection>
       ) : null}

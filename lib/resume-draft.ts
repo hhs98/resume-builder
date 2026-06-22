@@ -21,7 +21,13 @@ export type ResumeReference = {
   organization: string
   phone: string
   email: string
-  address: string
+}
+
+export type EducationAward = {
+  id: string
+  title: string
+  issuer: string
+  year: string
 }
 
 export type WorkHistoryItem = {
@@ -61,6 +67,10 @@ export type ResumeDraft = {
     fieldOfStudy: string
     graduationMonth: string
     graduationYear: string
+    description: string
+    projectUrl: string
+    gpa: string
+    awards: EducationAward[]
   }
   skills: ResumeSkill[]
   languages: ResumeLanguage[]
@@ -107,6 +117,10 @@ export const EMPTY_RESUME_DRAFT: ResumeDraft = {
     fieldOfStudy: "",
     graduationMonth: "",
     graduationYear: "",
+    description: "",
+    projectUrl: "",
+    gpa: "",
+    awards: [],
   },
   skills: [],
   languages: [],
@@ -199,6 +213,19 @@ export function getFullName(draft: ResumeDraft) {
     .map((s) => s.trim())
     .filter(Boolean)
     .join(" ")
+}
+
+export function getPrimaryJobTitle(draft: ResumeDraft): string {
+  const profession = draft.contact.profession.trim()
+  if (profession) return profession
+
+  const currentJob = draft.workHistory.find(
+    (work) => work.currentJob && work.jobTitle.trim()
+  )
+  if (currentJob) return currentJob.jobTitle.trim()
+
+  const latestWithTitle = draft.workHistory.find((work) => work.jobTitle.trim())
+  return latestWithTitle?.jobTitle.trim() ?? ""
 }
 
 export type HeadingContactErrors = Partial<
@@ -332,8 +359,7 @@ export function hasReferenceContent(ref: ResumeReference): boolean {
       ref.designation.trim() ||
       ref.organization.trim() ||
       ref.phone.trim() ||
-      ref.email.trim() ||
-      ref.address.trim()
+      ref.email.trim()
   )
 }
 
@@ -382,6 +408,49 @@ export function hasWorkHistoryContent(draft: ResumeDraft): boolean {
   return draft.workHistory.some(hasWorkHistoryItemContent)
 }
 
+export function parseEducationAwards(value: unknown): EducationAward[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter(
+      (item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null
+    )
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id : crypto.randomUUID(),
+      title: typeof item.title === "string" ? item.title : "",
+      issuer: typeof item.issuer === "string" ? item.issuer : "",
+      year: typeof item.year === "string" ? item.year : "",
+    }))
+}
+
+export function hasEducationAwardContent(award: EducationAward): boolean {
+  return Boolean(award.title.trim() || award.issuer.trim() || award.year.trim())
+}
+
+export function formatEducationAward(award: EducationAward): string {
+  const title = award.title.trim()
+  const meta = [award.issuer.trim(), award.year.trim()].filter(Boolean).join(", ")
+
+  if (!title) return meta
+  if (!meta) return title
+  return `${title} (${meta})`
+}
+
+export function getPreviewEducationAwards(draft: ResumeDraft): EducationAward[] {
+  return draft.education.awards.filter(hasEducationAwardContent)
+}
+
+export function hasEducationAdditionalDetails(draft: ResumeDraft): boolean {
+  const e = draft.education
+  return Boolean(
+    e.gpa.trim() ||
+      e.description.trim() ||
+      e.projectUrl.trim() ||
+      e.awards.some(hasEducationAwardContent)
+  )
+}
+
 export function hasEducationContent(draft: ResumeDraft): boolean {
   const e = draft.education
   return Boolean(
@@ -391,7 +460,11 @@ export function hasEducationContent(draft: ResumeDraft): boolean {
       e.degree.trim() ||
       e.fieldOfStudy.trim() ||
       e.graduationMonth ||
-      e.graduationYear
+      e.graduationYear ||
+      e.gpa.trim() ||
+      e.description.trim() ||
+      e.projectUrl.trim() ||
+      e.awards.some(hasEducationAwardContent)
   )
 }
 

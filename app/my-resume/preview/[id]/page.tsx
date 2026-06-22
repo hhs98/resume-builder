@@ -37,6 +37,13 @@ export default function StoredPreviewPage({
     void fetchResume()
   }, [id])
 
+  useEffect(() => {
+    if (!dbDraft) return
+    document
+      .getElementById("resume-print-preview")
+      ?.setAttribute("data-resume-ready", "true")
+  }, [dbDraft])
+
   if (loading) {
     return (
       <div className="light-surface flex min-h-screen items-center justify-center bg-muted/30">
@@ -69,6 +76,7 @@ export default function StoredPreviewPage({
     <div className="light-surface min-h-screen bg-muted/30 py-8 px-4 sm:py-12 sm:px-6 lg:px-8 print:bg-white print:p-0">
       <div 
         id="resume-print-preview"
+        data-resume-ready="true"
         className="mx-auto max-w-[210mm] shadow-2xl print:shadow-none"
       >
         <ResumePreview draft={dbDraft} templateId={dbDraft.templateId} />

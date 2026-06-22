@@ -19,7 +19,6 @@ const EMPTY_REFERENCE = {
   organization: "",
   phone: "",
   email: "",
-  address: "",
 }
 
 function FloatingField({
@@ -171,13 +170,6 @@ export function ReferencesStep() {
                   placeholder="TechCorp Inc."
                   value={ref.organization}
                   onChange={(v) => updateReference(index, { organization: v })}
-                />
-                <FloatingField
-                  id={`relationship-${index}`}
-                  label="Relationship"
-                  placeholder="Former Manager"
-                  value={ref.address}
-                  onChange={(v) => updateReference(index, { address: v })}
                 />
                 <FloatingField
                   id={`email-${index}`}

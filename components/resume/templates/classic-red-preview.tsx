@@ -1,5 +1,6 @@
 "use client"
 
+import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
 import {
   formatGraduationCompact,
   formatWorkItemDates,
@@ -192,6 +193,13 @@ export function ClassicRedPreview({
                   {educationOrgLine}
                 </p>
               ) : null}
+
+              <EducationAdditionalDetails
+                draft={draft}
+                className="mt-2"
+                textClassName="text-[11px] text-neutral-800"
+                linkClassName="text-[11px] text-red-800 underline underline-offset-2"
+              />
             </div>
             <RedDivider />
           </section>
@@ -310,11 +318,6 @@ export function ClassicRedPreview({
                   {ref.email ? (
                     <p className="text-[10px] text-neutral-800">
                       Email: {ref.email}
-                    </p>
-                  ) : null}
-                  {ref.address ? (
-                    <p className="text-[10px] text-neutral-800">
-                      {ref.address}
                     </p>
                   ) : null}
                 </div>

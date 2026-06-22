@@ -64,6 +64,10 @@ model Education {
   fieldOfStudy        String
   graduationMonth     String
   graduationYear      String
+  description         String? @db.Text
+  projectUrl          String?
+  gpa                 String?
+  awards              Json    @default("[]")
 }
 
 model Skill {
@@ -94,5 +98,4 @@ model Reference {
   organization String
   phone        String
   email        String
-  address      String
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
 import {
   formatGraduationCompact,
   formatWorkItemDates,
@@ -292,6 +293,13 @@ export function ModernGoldPreview({
                     {educationOrg}
                   </p>
                 ) : null}
+
+                <EducationAdditionalDetails
+                  draft={draft}
+                  className="mt-2"
+                  textClassName="text-[11px] text-neutral-800"
+                  linkClassName="text-[11px] text-amber-800 underline underline-offset-2"
+                />
               </div>
             </div>
           </section>

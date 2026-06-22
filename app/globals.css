@@ -164,12 +164,12 @@
     background: white !important;
   }
 
-  body * {
+  body:has(#resume-print-preview) * {
     visibility: hidden;
   }
 
-  #resume-print-preview,
-  #resume-print-preview * {
+  body:has(#resume-print-preview) #resume-print-preview,
+  body:has(#resume-print-preview) #resume-print-preview * {
     visibility: visible;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
