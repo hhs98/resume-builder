@@ -18,6 +18,15 @@
 # production
 /build
 
+# Environment variables
+.env
+.env.local
+.env.example
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
 # misc
 .DS_Store
 *.pem
@@ -34,3 +43,6 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.vercel
+
+/generated/prisma

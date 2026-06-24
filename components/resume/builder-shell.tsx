@@ -1,20 +1,28 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Sparkles } from "lucide-react"
+import { Check, HelpCircle, Settings } from "lucide-react"
 
 import { Progress } from "@/components/ui/progress"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
-import { computeResumeCompleteness } from "@/lib/resume-draft"
+import { useRequireHeadingContact } from "@/hooks/use-require-heading-contact"
+import {
+  computeResumeCompleteness,
+  FINALIZE_SECTIONS,
+  type ResumeDraft,
+} from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
 
 export const BUILDER_STEPS = [
   { href: "/new", label: "Heading" },
-  { href: "/new/work-history", label: "Work history" },
+  { href: "/new/work-history", label: "Work History" },
   { href: "/new/education", label: "Education" },
   { href: "/new/skills", label: "Skills" },
+  { href: "/new/languages", label: "Languages" },
   { href: "/new/summary", label: "Summary" },
+  { href: "/new/references", label: "References" },
   { href: "/new/finalize", label: "Finalize" },
 ] as const
 
@@ -23,44 +31,41 @@ function normalizePath(path: string) {
   return path
 }
 
+function isStepComplete(href: string, draft: ResumeDraft) {
+  if (href === "/new/finalize") {
+    return FINALIZE_SECTIONS.every((section) => section.isComplete(draft))
+  }
+
+  const section = FINALIZE_SECTIONS.find((item) => item.href === href)
+  return section ? section.isComplete(draft) : false
+}
+
 export function BuilderShell({ children }: { children: React.ReactNode }) {
   const pathname = normalizePath(usePathname() ?? "")
   const { draft } = useResumeDraft()
+
+  useRequireHeadingContact()
 
   const completenessPercent = computeResumeCompleteness(draft)
 
   return (
     <div className="flex min-h-svh w-full bg-background">
-      <aside className="sticky top-0 hidden h-svh w-56 shrink-0 flex-col border-r border-border bg-muted/30 md:flex">
-        <div className="border-b border-border px-4 py-5">
-          <div className="flex items-center gap-2.5">
-            <span
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
-              aria-hidden
-            >
-              <Sparkles className="size-5" strokeWidth={1.75} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-lg leading-none font-semibold tracking-tight">
-                <span className="text-red-600 dark:text-red-500">Job&nbsp;</span>
-                <span className="text-blue-600 dark:text-blue-500">Media</span>
-              </p>
-              <p className="mt-1.5 text-[0.65rem] font-medium tracking-wide text-muted-foreground">
-                AI Resume Builder
-              </p>
-            </div>
-          </div>
+      <aside className="sticky top-0 hidden h-svh w-56 shrink-0 flex-col bg-[#21304F] md:flex">
+        <div className="border-b border-white/10 px-4 py-5">
+          <Link href="/" className="inline-block rounded-md focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none">
+            <Image src="/logo.png" alt="Job Media" width={120} height={45} />
+          </Link>
         </div>
-        <div className="border-b border-border px-4 py-4">
+        <div className="border-b border-white/10 px-4 py-4">
           <div className="flex items-baseline justify-between gap-2">
             <p
               id="resume-completeness-label"
-              className="text-[0.65rem] font-medium tracking-wide text-muted-foreground"
+              className="text-[0.65rem] font-medium tracking-wide text-slate-400"
             >
               Resume completeness
             </p>
             <p
-              className="text-[0.65rem] font-semibold tabular-nums text-foreground"
+              className="text-[0.65rem] font-semibold tabular-nums text-white"
               aria-hidden
             >
               {completenessPercent}%
@@ -68,40 +73,60 @@ export function BuilderShell({ children }: { children: React.ReactNode }) {
           </div>
           <Progress
             value={completenessPercent}
-            className="mt-2 h-1.5"
+            className="mt-2 h-1.5 bg-white/15 [&_[data-slot=progress-indicator]]:bg-blue-500"
             aria-labelledby="resume-completeness-label"
             aria-valuetext={`${completenessPercent} percent complete`}
           />
         </div>
         <nav
-          className="flex-1 overflow-y-auto px-3 py-4"
+          className="flex-1 overflow-y-auto px-2 py-4"
           aria-label="Resume builder steps"
         >
-          <ol className="space-y-0.5">
+          <ol className="space-y-1">
             {BUILDER_STEPS.map((step, index) => {
               const stepPath = normalizePath(step.href)
               const isActive = pathname === stepPath
+              const isComplete = isStepComplete(step.href, draft)
               const stepNumber = index + 1
 
               return (
                 <li key={step.href}>
                   <Link
                     href={step.href}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-blue-600 font-semibold text-white"
+                        : "text-slate-300 hover:bg-white/5 hover:text-white"
+                    )}
                     aria-current={isActive ? "step" : undefined}
-                    aria-label={`Step ${stepNumber} of ${BUILDER_STEPS.length}: ${step.label}`}
+                    aria-label={`Step ${stepNumber} of ${BUILDER_STEPS.length}: ${step.label}${isComplete ? ", complete" : ""}`}
                   >
-                    <span
-                      className={cn(
-                        "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums",
-                        isActive
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-muted-foreground"
-                      )}
-                      aria-hidden
-                    >
-                      {stepNumber}
-                    </span>
+                    {isActive ? (
+                      <span
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-[#21304F] tabular-nums"
+                        aria-hidden
+                      >
+                        {stepNumber}
+                      </span>
+                    ) : isComplete ? (
+                      <span
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#1a3d2e] ring-1 ring-emerald-500/60"
+                        aria-hidden
+                      >
+                        <Check
+                          className="size-3.5 text-emerald-400"
+                          strokeWidth={2.5}
+                        />
+                      </span>
+                    ) : (
+                      <span
+                        className="flex size-7 shrink-0 items-center justify-center rounded-full border border-white/20 text-xs font-semibold text-slate-400 tabular-nums"
+                        aria-hidden
+                      >
+                        {stepNumber}
+                      </span>
+                    )}
                     <span className="min-w-0 leading-snug">{step.label}</span>
                   </Link>
                 </li>
@@ -109,37 +134,48 @@ export function BuilderShell({ children }: { children: React.ReactNode }) {
             })}
           </ol>
         </nav>
+
+        <div className="mt-auto border-t border-white/10 px-2 py-4">
+          <ul className="space-y-0.5">
+            <li>
+              <a
+                href="https://jobmedia.com.bd"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+              >
+                <HelpCircle className="size-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Help Center</span>
+              </a>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200"
+              >
+                <Settings className="size-[18px] shrink-0" strokeWidth={1.75} />
+                <span>Settings</span>
+              </button>
+            </li>
+          </ul>
+        </div>
       </aside>
 
-      <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-        <div className="border-b border-border bg-muted/20 px-4 py-3 md:hidden">
-          <div className="flex items-center gap-2">
-            <span
-              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-blue-600/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
-              aria-hidden
-            >
-              <Sparkles className="size-4" strokeWidth={1.75} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-base leading-none font-semibold tracking-tight">
-                <span className="text-red-600 dark:text-red-500">Job</span>
-                <span className="text-blue-600 dark:text-blue-500">Media</span>
-              </p>
-              <p className="mt-1 text-[0.6rem] font-medium tracking-wide text-muted-foreground">
-                AI Resume Builder
-              </p>
-            </div>
-          </div>
+      <div className="light-surface flex min-h-svh min-w-0 flex-1 flex-col">
+        <div className="border-b border-white/10 bg-[#21304F] px-4 py-3 md:hidden">
+          <Link href="/" className="inline-block rounded-md focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none">
+            <Image src="/logo.png" alt="Job Media" width={100} height={38} />
+          </Link>
           <div className="mt-3">
             <div className="flex items-baseline justify-between gap-2">
               <p
                 id="resume-completeness-label-mobile"
-                className="text-[0.6rem] font-medium tracking-wide text-muted-foreground"
+                className="text-[0.6rem] font-medium tracking-wide text-slate-400"
               >
                 Resume completeness
               </p>
               <p
-                className="text-[0.6rem] font-semibold tabular-nums text-foreground"
+                className="text-[0.6rem] font-semibold tabular-nums text-white"
                 aria-hidden
               >
                 {completenessPercent}%
@@ -147,7 +183,7 @@ export function BuilderShell({ children }: { children: React.ReactNode }) {
             </div>
             <Progress
               value={completenessPercent}
-              className="mt-1.5 h-1.5"
+              className="mt-1.5 h-1.5 bg-white/15 [&_[data-slot=progress-indicator]]:bg-blue-500"
               aria-labelledby="resume-completeness-label-mobile"
               aria-valuetext={`${completenessPercent} percent complete`}
             />
@@ -159,27 +195,47 @@ export function BuilderShell({ children }: { children: React.ReactNode }) {
             {BUILDER_STEPS.map((step, index) => {
               const stepPath = normalizePath(step.href)
               const isActive = pathname === stepPath
+              const isComplete = isStepComplete(step.href, draft)
               const stepNumber = index + 1
 
               return (
                 <Link
                   key={step.href}
                   href={step.href}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted py-1.5 pr-3 pl-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pr-3 pl-2 text-xs transition-colors",
+                    isActive
+                      ? "bg-blue-600 font-semibold text-white"
+                      : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  )}
                   aria-current={isActive ? "step" : undefined}
-                  aria-label={`Step ${stepNumber} of ${BUILDER_STEPS.length}: ${step.label}`}
+                  aria-label={`Step ${stepNumber} of ${BUILDER_STEPS.length}: ${step.label}${isComplete ? ", complete" : ""}`}
                 >
-                  <span
-                    className={cn(
-                      "flex size-5 items-center justify-center rounded-full text-[0.65rem] font-semibold tabular-nums",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background/80 text-foreground"
-                    )}
-                    aria-hidden
-                  >
-                    {stepNumber}
-                  </span>
+                  {isActive ? (
+                    <span
+                      className="flex size-5 items-center justify-center rounded-full bg-white text-[0.65rem] font-semibold text-[#21304F] tabular-nums"
+                      aria-hidden
+                    >
+                      {stepNumber}
+                    </span>
+                  ) : isComplete ? (
+                    <span
+                      className="flex size-5 items-center justify-center rounded-full bg-[#1a3d2e] ring-1 ring-emerald-500/60"
+                      aria-hidden
+                    >
+                      <Check
+                        className="size-3 text-emerald-400"
+                        strokeWidth={2.5}
+                      />
+                    </span>
+                  ) : (
+                    <span
+                      className="flex size-5 items-center justify-center rounded-full border border-white/20 text-[0.65rem] font-semibold text-slate-400 tabular-nums"
+                      aria-hidden
+                    >
+                      {stepNumber}
+                    </span>
+                  )}
                   <span className="whitespace-nowrap">{step.label}</span>
                 </Link>
               )

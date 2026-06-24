@@ -1,12 +1,24 @@
 "use client"
 
+import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
 import {
   formatGraduationCompact,
-  formatWorkDatesCompact,
+  formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getPreviewLanguages,
+  getPreviewReferences,
+  getPreviewSkills,
+  getPreviewWorkHistory,
+  hasEducationContent,
+  hasPreviewContact,
+  hasPreviewLanguages,
+  hasPreviewReferences,
+  hasPreviewSkills,
+  hasPreviewWorkHistory,
+  hasSummaryContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -15,7 +27,9 @@ const RED = "#c41e3a"
 const PINK = "#f8d4da"
 
 type ClassicRedPreviewProps = {
-  draft: ResumeDraft
+  draft: ResumeDraft & {
+    workHistory?: any[]
+  }
   className?: string
   id?: string
 }
@@ -27,8 +41,12 @@ export function ClassicRedPreview({
 }: ClassicRedPreviewProps) {
   const name = (getFullName(draft) || "Your name").toUpperCase()
   const address = getContactLocation(draft)
-  const workDates = formatWorkDatesCompact(draft)
   const gradDate = formatGraduationCompact(draft)
+
+  const workHistory = getPreviewWorkHistory(draft)
+  const skills = getPreviewSkills(draft)
+  const languages = getPreviewLanguages(draft)
+  const references = getPreviewReferences(draft)
 
   const educationDegreeLine = [
     draft.education.degree.trim()
@@ -47,28 +65,22 @@ export function ClassicRedPreview({
     .filter((s) => s.trim())
     .join(", ")
 
-  const workTitleLine = [draft.work.jobTitle.trim(), workDates]
-    .filter(Boolean)
-    .join(", ")
-
-  const workCompanyLine = [
-    draft.work.employer,
-    [draft.work.location, draft.work.remote ? "Remote" : ""]
-      .filter(Boolean)
-      .join(", "),
-  ]
-    .filter((s) => s.trim())
-    .join(", ")
-
-  const hasContact =
-    address || draft.contact.phone.trim() || draft.contact.email.trim()
-  const hasSummary = draft.summary.trim().length > 0
-  const hasEducation = educationDegreeLine.trim() || educationOrgLine.trim()
-  const hasSkills = draft.skills.length > 0
-  const hasWork = workTitleLine.trim() || workCompanyLine.trim()
+  const hasContact = hasPreviewContact(draft)
+  const hasSummary = hasSummaryContent(draft)
+  const hasEducation = hasEducationContent(draft)
+  const hasSkills = hasPreviewSkills(draft)
+  const hasWork = hasPreviewWorkHistory(draft)
+  const hasReferences = hasPreviewReferences(draft)
+  const hasLanguages = hasPreviewLanguages(draft)
 
   const isEmpty =
-    !hasContact && !hasSummary && !hasEducation && !hasSkills && !hasWork
+    !hasContact &&
+    !hasSummary &&
+    !hasEducation &&
+    !hasSkills &&
+    !hasWork &&
+    !hasReferences &&
+    !hasLanguages
 
   return (
     <article
@@ -82,9 +94,9 @@ export function ClassicRedPreview({
     >
       <div className="h-3 w-full" style={{ backgroundColor: PINK }} />
 
+      {/* HEADER */}
       <header className="flex flex-col items-center px-10 pt-6 pb-2 text-center">
         {draft.contact.photoDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- data URL preview
           <img
             src={draft.contact.photoDataUrl}
             alt=""
@@ -102,6 +114,7 @@ export function ClassicRedPreview({
               .slice(0, 2)}
           </span>
         )}
+
         <h1
           className="mt-4 text-2xl font-bold tracking-[0.2em]"
           style={{ color: RED }}
@@ -113,6 +126,7 @@ export function ClassicRedPreview({
       <RedDivider className="mx-10" />
 
       <div className="space-y-0 px-10 pb-8">
+        {/* CONTACT */}
         {hasContact ? (
           <section>
             <SectionHeader title="Contact" />
@@ -125,6 +139,7 @@ export function ClassicRedPreview({
               ) : (
                 <span />
               )}
+
               {draft.contact.phone.trim() ? (
                 <div>
                   <p className="font-bold text-neutral-900">Phone</p>
@@ -135,6 +150,7 @@ export function ClassicRedPreview({
               ) : (
                 <span />
               )}
+
               {draft.contact.email.trim() ? (
                 <div>
                   <p className="font-bold text-neutral-900">Email</p>
@@ -150,16 +166,18 @@ export function ClassicRedPreview({
           </section>
         ) : null}
 
+        {/* SUMMARY */}
         {hasSummary ? (
           <section>
             <SectionHeader title="Resume Objective" />
-            <p className="mt-3 whitespace-pre-wrap text-[11px] leading-relaxed text-neutral-800">
+            <p className="mt-3 text-[11px] leading-relaxed whitespace-pre-wrap text-neutral-800">
               {draft.summary.trim()}
             </p>
             <RedDivider />
           </section>
         ) : null}
 
+        {/* EDUCATION */}
         {hasEducation ? (
           <section>
             <SectionHeader title="Education" />
@@ -169,21 +187,30 @@ export function ClassicRedPreview({
                   {educationDegreeLine}
                 </p>
               ) : null}
+
               {educationOrgLine ? (
                 <p className="text-[11px] font-bold text-neutral-900">
                   {educationOrgLine}
                 </p>
               ) : null}
+
+              <EducationAdditionalDetails
+                draft={draft}
+                className="mt-2"
+                textClassName="text-[11px] text-neutral-800"
+                linkClassName="text-[11px] text-red-800 underline underline-offset-2"
+              />
             </div>
             <RedDivider />
           </section>
         ) : null}
 
+        {/* SKILLS */}
         {hasSkills ? (
           <section>
             <SectionHeader title="Skills" />
             <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
-              {draft.skills.map((skill) => (
+              {skills.map((skill) => (
                 <li
                   key={skill.id}
                   className="flex items-center gap-1.5 text-[10px] text-neutral-900"
@@ -199,22 +226,107 @@ export function ClassicRedPreview({
           </section>
         ) : null}
 
-        {hasWork ? (
+        {/* LANGUAGES */}
+        {hasLanguages ? (
           <section>
-            <SectionHeader title="Work History" />
-            <div className="mt-3 space-y-1">
-              {workTitleLine ? (
-                <p className="text-[11px] text-neutral-800">{workTitleLine}</p>
-              ) : null}
-              {workCompanyLine ? (
-                <p className="text-[11px] font-bold text-neutral-900">
-                  {workCompanyLine}
-                </p>
-              ) : null}
+            <SectionHeader title="Languages" />
+            <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
+              {languages.map((lang) => (
+                <li
+                  key={lang.id}
+                  className="flex items-center gap-1.5 text-[10px] text-neutral-900"
+                >
+                  <span className="min-w-0 flex-1 leading-snug">
+                    {lang.name}
+                  </span>
+                  <SkillDots rating={lang.rating} max={4} />
+                </li>
+              ))}
+            </ul>
+            <RedDivider />
+          </section>
+        ) : null}
+
+        {/* WORK HISTORY (FIXED MULTI) */}
+        {hasWork ? (
+  <section>
+    <SectionHeader title="Work History" />
+
+    <div className="mt-3 space-y-6">
+      {workHistory.map((work, index) => {
+        const workDates = formatWorkItemDates(work)
+
+        const titleLine = [
+          work.jobTitle?.trim(),
+          workDates,
+        ]
+          .filter(Boolean)
+          .join(", ")
+
+        const companyLine = [
+          work.employer,
+          [work.location, work.remote ? "Remote" : ""]
+            .filter(Boolean)
+            .join(", "),
+        ]
+          .filter((s) => s?.trim())
+          .join(", ")
+
+        return (
+          <div key={work.id || index} className="space-y-1">
+            {titleLine && (
+              <p className="text-[11px] text-neutral-800">
+                {titleLine}
+              </p>
+            )}
+
+            {companyLine && (
+              <p className="text-[11px] font-bold text-neutral-900">
+                {companyLine}
+              </p>
+            )}
+
+            {work.responsibilities?.trim() && (
+              <p className="text-[11px] whitespace-pre-wrap text-neutral-800">
+                {work.responsibilities}
+              </p>
+            )}
+          </div>
+        )
+      })}
+    </div>
+    <RedDivider />
+  </section>
+) : null}
+
+        {/* REFERENCES */}
+        {hasReferences ? (
+          <section>
+            <SectionHeader title="References" />
+            <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-6">
+              {references.map((ref) => (
+                <div key={ref.id} className="space-y-1">
+                  <p className="text-[11px] font-bold text-neutral-900">
+                    {ref.name}
+                  </p>
+                  <p className="text-[10px] text-neutral-800">
+                    {ref.designation}, {ref.organization}
+                  </p>
+                  <p className="text-[10px] text-neutral-800">
+                    Phone: {ref.phone}
+                  </p>
+                  {ref.email ? (
+                    <p className="text-[10px] text-neutral-800">
+                      Email: {ref.email}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
             </div>
           </section>
         ) : null}
 
+        {/* EMPTY STATE */}
         {isEmpty ? (
           <p className="py-12 text-center text-sm text-neutral-500">
             Fill in the builder steps to see your resume here.
@@ -248,19 +360,22 @@ function RedDivider({ className }: { className?: string }) {
   )
 }
 
-function SkillDots({ rating }: { rating: number }) {
+function SkillDots({ rating, max = 5 }: { rating: number; max?: number }) {
   return (
     <span className="inline-flex shrink-0 gap-0.5" aria-hidden>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <span
-          key={n}
-          className="size-2 rounded-full border"
-          style={{
-            borderColor: RED,
-            backgroundColor: n <= rating ? RED : "transparent",
-          }}
-        />
-      ))}
+      {Array.from({ length: max }).map((_, i) => {
+        const n = i + 1
+        return (
+          <span
+            key={n}
+            className="size-2 rounded-full border"
+            style={{
+              borderColor: RED,
+              backgroundColor: n <= rating ? RED : "transparent",
+            }}
+          />
+        )
+      })}
     </span>
   )
 }
