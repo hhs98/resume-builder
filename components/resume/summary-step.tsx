@@ -131,10 +131,12 @@ export function SummaryStep() {
 
   const summaryRef = useRef<HTMLTextAreaElement>(null)
   const draftRef = useRef(draft)
-  const fetchedSearchQueryRef = useRef<string | null>(null)
+  const [lastAiSearchQuery, setLastAiSearchQuery] = useState<string | null>(null)
   const searchAbortRef = useRef<AbortController | null>(null)
 
-  draftRef.current = draft
+  useEffect(() => {
+    draftRef.current = draft
+  }, [draft])
 
   const visiblePopularTitles = showMorePopular
     ? [...POPULAR_TITLES, ...POPULAR_TITLES_MORE]
@@ -155,29 +157,13 @@ export function SummaryStep() {
     searchWordCount >= SEARCH_AI_MIN_WORDS
   const showNoStaticMatch = !hasStaticResults && searchQuery.length > 0
   const hasAiResultsForQuery =
-    fetchedSearchQueryRef.current === searchQuery &&
-    searchAiSummaries.length > 0
+    lastAiSearchQuery === searchQuery && searchAiSummaries.length > 0
   const showAiSearchButton =
     canSearchWithAi && !isSearchAiLoading && !hasAiResultsForQuery
 
   useEffect(() => {
-    if (hasStaticResults || !searchQuery) {
-      searchAbortRef.current?.abort()
-      fetchedSearchQueryRef.current = null
-      setSearchAiSummaries([])
-      setSearchAiError(null)
-      setIsSearchAiLoading(false)
-      return
-    }
-
-    if (fetchedSearchQueryRef.current !== searchQuery) {
-      searchAbortRef.current?.abort()
-      setSearchAiSummaries([])
-      setSearchAiError(null)
-      setIsSearchAiLoading(false)
-      fetchedSearchQueryRef.current = null
-    }
-  }, [searchQuery, hasStaticResults])
+    searchAbortRef.current?.abort()
+  }, [searchQuery])
 
   async function runSearchWithAi() {
     if (!canSearchWithAi || isSearchAiLoading) return
@@ -225,7 +211,7 @@ export function SummaryStep() {
         )
       }
 
-      fetchedSearchQueryRef.current = queryToFetch
+      setLastAiSearchQuery(queryToFetch)
       setSearchAiSummaries(data.summaries)
     } catch (error) {
       if (controller.signal.aborted) return
@@ -502,7 +488,7 @@ export function SummaryStep() {
                   <div className="px-5 py-8 text-center text-sm text-destructive">
                     {searchAiError}
                   </div>
-                ) : searchAiSummaries.length > 0 ? (
+                ) : hasAiResultsForQuery ? (
                   <div>
                     <div className="border-b border-blue-200/80 bg-blue-50/40 px-5 py-3">
                       <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase">

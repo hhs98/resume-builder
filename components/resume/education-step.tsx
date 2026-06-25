@@ -28,7 +28,7 @@ import { useResumeDraft } from "@/hooks/use-resume-draft"
 import type { EducationAward } from "@/lib/resume-draft"
 import { hasEducationAwardContent } from "@/lib/resume-draft"
 import { MONTHS } from "@/lib/resume-form-constants"
-import { cn } from "@/lib/utils"
+import { cn, generateId } from "@/lib/utils"
 
 const EDUCATION_LEVELS = [
   {
@@ -102,7 +102,7 @@ type DetailSection =
 
 function newAward(): EducationAward {
   return {
-    id: crypto.randomUUID(),
+    id: generateId(),
     title: "",
     issuer: "",
     year: "",

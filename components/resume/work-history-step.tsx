@@ -33,7 +33,7 @@ import {
 } from "@/lib/ai-errors"
 import { normalizeEnhancedResponsibilities } from "@/lib/enhance-work-history"
 import { MONTHS } from "@/lib/resume-form-constants"
-import { cn } from "@/lib/utils"
+import { cn, generateId } from "@/lib/utils"
 
 const YEAR_OPTIONS = (() => {
   const max = new Date().getFullYear() + 6
@@ -88,7 +88,7 @@ function ToggleSwitch({
 }
 
 const EMPTY_WORK = {
-  id: crypto.randomUUID(),
+  id: generateId(),
   jobTitle: "",
   employer: "",
   location: "",
@@ -101,21 +101,6 @@ const EMPTY_WORK = {
   responsibilities: "",
 }
 
-function getBulletLines(text: string): string[] {
-  return normalizeEnhancedResponsibilities(text)
-    .split("\n")
-    .map((line) => line.replace(/^•\s*/, "").trim())
-    .filter(Boolean)
-}
-
-function responsibilityHasLine(responsibilities: string, line: string): boolean {
-  const target = line.trim().toLowerCase()
-  return responsibilities
-    .split("\n")
-    .map((entry) => entry.replace(/^•\s*/, "").trim().toLowerCase())
-    .includes(target)
-}
-
 export function WorkHistoryStep() {
   const { draft, patchDraft } = useResumeDraft()
   const [enhancingIndex, setEnhancingIndex] = useState<number | null>(null)
@@ -125,6 +110,9 @@ export function WorkHistoryStep() {
   } | null>(null)
   const [pendingSuggestionByWorkId, setPendingSuggestionByWorkId] = useState<
     Record<string, string>
+  >({})
+  const [addedSuggestionByWorkId, setAddedSuggestionByWorkId] = useState<
+    Record<string, boolean>
   >({})
   const [undoByWorkId, setUndoByWorkId] = useState<Record<string, string>>({})
 
@@ -141,7 +129,7 @@ export function WorkHistoryStep() {
     patchDraft({
       workHistory: [
         ...workHistory,
-        { ...EMPTY_WORK, id: crypto.randomUUID() },
+        { ...EMPTY_WORK, id: generateId() },
       ],
     })
   }
@@ -152,7 +140,7 @@ export function WorkHistoryStep() {
       workHistory:
         updated.length > 0
           ? updated
-          : [{ ...EMPTY_WORK, id: crypto.randomUUID() }],
+          : [{ ...EMPTY_WORK, id: generateId() }],
     })
   }
 
@@ -215,6 +203,16 @@ export function WorkHistoryStep() {
         ...current,
         [work.id]: normalized,
       }))
+      setAddedSuggestionByWorkId((current) => {
+        const next = { ...current }
+        delete next[work.id]
+        return next
+      })
+      setUndoByWorkId((current) => {
+        const next = { ...current }
+        delete next[work.id]
+        return next
+      })
     } catch (error) {
       setEnhanceError({
         index,
@@ -228,16 +226,15 @@ export function WorkHistoryStep() {
     }
   }
 
-  function addSingleSuggestionLine(index: number, line: string) {
+  function addAllSuggestions(index: number) {
     const work = workHistory[index]
     if (!work) return
 
-    const trimmedLine = line.trim()
-    if (!trimmedLine) return
-    if (responsibilityHasLine(work.responsibilities || "", trimmedLine)) return
+    const pendingSuggestion = pendingSuggestionByWorkId[work.id]
+    if (!pendingSuggestion?.trim()) return
 
-    const bullet = `• ${trimmedLine}`
     const current = work.responsibilities.trim()
+    const toAdd = pendingSuggestion.trim()
 
     setUndoByWorkId((currentUndo) => {
       if (work.id in currentUndo) return currentUndo
@@ -248,8 +245,12 @@ export function WorkHistoryStep() {
     })
 
     updateWork(index, {
-      responsibilities: current ? `${current}\n${bullet}` : bullet,
+      responsibilities: current ? `${current}\n${toAdd}` : toAdd,
     })
+    setAddedSuggestionByWorkId((current) => ({
+      ...current,
+      [work.id]: true,
+    }))
     setEnhanceError(null)
   }
 
@@ -261,6 +262,11 @@ export function WorkHistoryStep() {
     if (previous === undefined) return
 
     updateWork(index, { responsibilities: previous })
+    setAddedSuggestionByWorkId((current) => {
+      const next = { ...current }
+      delete next[work.id]
+      return next
+    })
     setUndoByWorkId((current) => {
       const next = { ...current }
       delete next[work.id]
@@ -304,10 +310,10 @@ export function WorkHistoryStep() {
             const currentJobId = `current-job-${work.id}`
             const remoteId = `remote-${work.id}`
             const pendingSuggestion = pendingSuggestionByWorkId[work.id]
+            const suggestionAdded = Boolean(
+              pendingSuggestion && addedSuggestionByWorkId[work.id]
+            )
             const canUndo = work.id in undoByWorkId
-            const suggestionLines = pendingSuggestion
-              ? getBulletLines(pendingSuggestion)
-              : []
 
             return (
               <div
@@ -551,61 +557,41 @@ export function WorkHistoryStep() {
                         {enhanceError.message}
                       </p>
                     ) : null}
-                    {suggestionLines.length > 0 ? (
+                    {pendingSuggestion ? (
                       <div className="mb-3 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/50">
                         <div className="border-b border-blue-200/80 px-4 py-3">
                           <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase">
                             AI suggestion
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            Add bullets one at a time from the list below.
+                            Review below, then add all bullets at once.
                           </p>
                         </div>
-                        <ul className="divide-y divide-blue-200/60">
-                          {suggestionLines.map((line, lineIndex) => {
-                            const added = responsibilityHasLine(
-                              work.responsibilities || "",
-                              line
-                            )
-
-                            return (
-                              <li
-                                key={`${lineIndex}-${line}`}
-                                className="flex items-center justify-between gap-3 px-4 py-3"
-                              >
-                                <span className="flex min-w-0 gap-2 text-sm leading-snug text-foreground">
-                                  <span
-                                    className="shrink-0 text-blue-600"
-                                    aria-hidden
-                                  >
-                                    •
-                                  </span>
-                                  <span>{line}</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  disabled={added}
-                                  onClick={() =>
-                                    addSingleSuggestionLine(index, line)
-                                  }
-                                  className={cn(
-                                    "inline-flex shrink-0 items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
-                                    added
-                                      ? "cursor-default border-emerald-200 bg-emerald-50 text-emerald-700"
-                                      : "border-blue-500 bg-white text-blue-600 hover:bg-blue-50"
-                                  )}
-                                >
-                                  {added ? (
-                                    <Check className="size-3.5" aria-hidden />
-                                  ) : (
-                                    <Plus className="size-3.5" aria-hidden />
-                                  )}
-                                  {added ? "Added" : "ADD"}
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>
+                        <p className="whitespace-pre-wrap px-4 py-3 text-sm leading-relaxed text-foreground">
+                          {pendingSuggestion}
+                        </p>
+                        <div className="border-t border-blue-200/80 px-4 py-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={suggestionAdded}
+                            onClick={() => addAllSuggestions(index)}
+                            className={cn(
+                              "gap-1.5",
+                              suggestionAdded
+                                ? "cursor-default border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                                : "bg-blue-600 text-white hover:bg-blue-700"
+                            )}
+                            variant={suggestionAdded ? "outline" : "default"}
+                          >
+                            {suggestionAdded ? (
+                              <Check className="size-3.5" aria-hidden />
+                            ) : (
+                              <Plus className="size-3.5" aria-hidden />
+                            )}
+                            {suggestionAdded ? "Added" : "ADD"}
+                          </Button>
+                        </div>
                       </div>
                     ) : null}
                     <Textarea

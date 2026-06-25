@@ -219,7 +219,7 @@ export function NewContactStep() {
             <Lightbulb className="size-4 text-muted-foreground" aria-hidden />
             Tips
           </Button>
-          <Button
+          {/* <Button
             variant="link"
             size="sm"
             className="h-9 px-3 text-blue-600"
@@ -235,7 +235,7 @@ export function NewContactStep() {
             asChild
           >
             <Link href="/">Save &amp; Exit</Link>
-          </Button>
+          </Button> */}
         </div>
 
         <div className="flex flex-1 justify-center overflow-y-auto px-6 py-8 sm:px-10 sm:py-10 lg:items-center lg:py-12">

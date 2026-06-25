@@ -8,8 +8,8 @@ type OllamaGenerateResponse = {
 function getOllamaConfig() {
   return {
     baseUrl:
-      process.env.OLLAMA_BASE_URL?.replace(/\/$/, "") ||
-      "http://127.0.0.1:11434",
+      process.env.OLLAMA_BASE_URL ||
+      "https://hollama.jobmedia.com.bd/",
     model: process.env.OLLAMA_MODEL || "qwen2.5:7b",
   }
 }

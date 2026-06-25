@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
 import type { ResumeLanguage } from "@/lib/resume-draft"
-import { cn } from "@/lib/utils"
+import { cn, generateId } from "@/lib/utils"
 
 type ProficiencyLevel = {
   value: 1 | 2 | 3 | 4
@@ -53,7 +53,7 @@ export function LanguagesStep() {
     }
     setLanguages([
       ...languages,
-      { id: crypto.randomUUID(), name: trimmed, rating: selectedLevel },
+      { id: generateId(), name: trimmed, rating: selectedLevel },
     ])
     setLangName("")
   }

@@ -26,7 +26,7 @@ import {
 import { MAX_SKILL_WORDS, normalizeSkillName } from "@/lib/enhance-skills"
 import { getPrimaryJobTitle } from "@/lib/resume-draft"
 import type { ResumeSkill } from "@/lib/resume-draft"
-import { cn } from "@/lib/utils"
+import { cn, generateId } from "@/lib/utils"
 
 const SUGGESTED_ROLES = [
   "Customer Service",
@@ -68,7 +68,7 @@ const PREWRITTEN_EXAMPLES = [
 ] as const
 
 function newSkillId() {
-  return crypto.randomUUID()
+  return generateId()
 }
 
 type SkillSuggestionListProps = {
@@ -147,10 +147,12 @@ export function SkillsStep() {
   const [searchAiError, setSearchAiError] = useState<string | null>(null)
   const customSkillsRef = useRef<HTMLTextAreaElement>(null)
   const draftRef = useRef(draft)
-  const fetchedSearchQueryRef = useRef<string | null>(null)
+  const [lastAiSearchQuery, setLastAiSearchQuery] = useState<string | null>(null)
   const searchAbortRef = useRef<AbortController | null>(null)
 
-  draftRef.current = draft
+  useEffect(() => {
+    draftRef.current = draft
+  }, [draft])
 
   const visibleSuggestedRoles = showMoreRoles
     ? [...SUGGESTED_ROLES, ...SUGGESTED_ROLES_MORE]
@@ -175,28 +177,13 @@ export function SkillsStep() {
     searchWordCount >= SEARCH_AI_MIN_WORDS
   const showNoStaticMatch = !hasStaticResults && searchQuery.length > 0
   const hasAiResultsForQuery =
-    fetchedSearchQueryRef.current === searchQuery && searchAiSkills.length > 0
+    lastAiSearchQuery === searchQuery && searchAiSkills.length > 0
   const showAiSearchButton =
     canSearchWithAi && !isSearchAiLoading && !hasAiResultsForQuery
 
   useEffect(() => {
-    if (hasStaticResults || !searchQuery) {
-      searchAbortRef.current?.abort()
-      fetchedSearchQueryRef.current = null
-      setSearchAiSkills([])
-      setSearchAiError(null)
-      setIsSearchAiLoading(false)
-      return
-    }
-
-    if (fetchedSearchQueryRef.current !== searchQuery) {
-      searchAbortRef.current?.abort()
-      setSearchAiSkills([])
-      setSearchAiError(null)
-      setIsSearchAiLoading(false)
-      fetchedSearchQueryRef.current = null
-    }
-  }, [searchQuery, hasStaticResults])
+    searchAbortRef.current?.abort()
+  }, [searchQuery])
 
   async function runSearchWithAi() {
     if (!canSearchWithAi || isSearchAiLoading) return
@@ -243,7 +230,7 @@ export function SkillsStep() {
         )
       }
 
-      fetchedSearchQueryRef.current = queryToFetch
+      setLastAiSearchQuery(queryToFetch)
       setSearchAiSkills(data.skills)
     } catch (error) {
       if (controller.signal.aborted) return
@@ -529,7 +516,7 @@ export function SkillsStep() {
                   <div className="px-5 py-8 text-center text-sm text-destructive">
                     {searchAiError}
                   </div>
-                ) : searchAiSkills.length > 0 ? (
+                ) : hasAiResultsForQuery ? (
                   <div>
                     <div className="border-b border-blue-200/80 bg-blue-50/40 px-5 py-3">
                       <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase">

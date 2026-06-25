@@ -1,4 +1,5 @@
 import { MONTHS } from "@/lib/resume-form-constants"
+import { generateId } from "@/lib/utils"
 
 export type ResumeTemplateId = "classic" | "modern" | "minimal" | "executive"
 
@@ -81,7 +82,7 @@ export type ResumeDraft = {
 export const RESUME_DRAFT_STORAGE_KEY = "jobmedia-resume-draft-v1"
 
 export const EMPTY_RESUME_DRAFT: ResumeDraft = {
-  id: crypto.randomUUID(),
+  id: generateId(),
   templateId: "classic",
   contact: {
     givenName: "",
@@ -96,7 +97,7 @@ export const EMPTY_RESUME_DRAFT: ResumeDraft = {
   },
   workHistory: [
     {
-      id: crypto.randomUUID(),
+      id: generateId(),
       jobTitle: "",
       employer: "",
       location: "",
@@ -417,7 +418,7 @@ export function parseEducationAwards(value: unknown): EducationAward[] {
         typeof item === "object" && item !== null
     )
     .map((item) => ({
-      id: typeof item.id === "string" ? item.id : crypto.randomUUID(),
+      id: typeof item.id === "string" ? item.id : generateId(),
       title: typeof item.title === "string" ? item.title : "",
       issuer: typeof item.issuer === "string" ? item.issuer : "",
       year: typeof item.year === "string" ? item.year : "",

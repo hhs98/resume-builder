@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { hasReferenceContent } from "@/lib/resume-draft"
+import { generateId } from "@/lib/utils"
 
 const EMPTY_REFERENCE = {
   id: "",
@@ -65,7 +66,7 @@ export function ReferencesStep() {
   const references =
     draft.references?.length > 0
       ? draft.references
-      : [{ ...EMPTY_REFERENCE, id: crypto.randomUUID() }]
+      : [{ ...EMPTY_REFERENCE, id: generateId() }]
 
   function persistReferences(refs: (typeof EMPTY_REFERENCE)[]) {
     const hasOtherContent = (index: number) =>
@@ -90,7 +91,7 @@ export function ReferencesStep() {
   function addReference() {
     persistReferences([
       ...references,
-      { ...EMPTY_REFERENCE, id: crypto.randomUUID() },
+      { ...EMPTY_REFERENCE, id: generateId() },
     ])
   }
 
