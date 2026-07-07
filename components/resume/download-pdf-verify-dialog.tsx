@@ -18,6 +18,11 @@ import {
 } from "@/components/ui/input-otp"
 import { useGoogleReCaptcha } from "@google-recaptcha/react"
 import type { ResumeDraft } from "@/lib/resume-draft"
+import {
+  clearDownloadPermit,
+  storeDownloadPermit,
+} from "@/lib/resume-access-storage"
+import { verifyRecaptchaOnClient } from "@/lib/recaptcha-client"
 
 type Step = "details" | "otp" | "success"
 
@@ -29,7 +34,7 @@ type DownloadPdfVerifyDialogProps = {
   fullName: string
   phoneNumber: string
   draft: ResumeDraft
-  onVerified: (resumeId: string | null) => void | Promise<void>
+  onVerified: (resumeId: string, permitToken: string) => void | Promise<void>
 }
 
 function maskPhone(phone: string) {
@@ -75,7 +80,7 @@ export function DownloadPdfVerifyDialog({
   draft,
   onVerified,
 }: DownloadPdfVerifyDialogProps) {
-  const { executeV3 } = useGoogleReCaptcha()
+  const { executeV3, isLoading: isRecaptchaLoading } = useGoogleReCaptcha()
   const [step, setStep] = useState<Step>("details")
   const [otp, setOtp] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -84,12 +89,13 @@ export function DownloadPdfVerifyDialog({
   const [downloadState, setDownloadState] = useState<DownloadState>("idle")
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [resumeId, setResumeId] = useState<string | null>(null)
+  const [permitToken, setPermitToken] = useState<string | null>(null)
   const [saveSucceeded, setSaveSucceeded] = useState(false)
 
   const trimmedName = fullName.trim()
   const trimmedPhone = phoneNumber.trim()
   const canVerifyDetails = trimmedName.length > 0 && trimmedPhone.length > 0
-  const isBusy = isRequestingOtp || isVerifying
+  const isBusy = isRequestingOtp || isVerifying || isRecaptchaLoading
 
   function resetDialog() {
     setStep("details")
@@ -100,7 +106,9 @@ export function DownloadPdfVerifyDialog({
     setDownloadState("idle")
     setDownloadError(null)
     setResumeId(null)
+    setPermitToken(null)
     setSaveSucceeded(false)
+    clearDownloadPermit()
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -120,7 +128,10 @@ export function DownloadPdfVerifyDialog({
     setError(null)
   }
 
-  async function requestPdfDownload(id: string | null) {
+  async function requestPdfDownload(
+    id: string | null,
+    permit: string | null
+  ) {
     if (!id) {
       setDownloadState("error")
       setDownloadError(
@@ -129,10 +140,18 @@ export function DownloadPdfVerifyDialog({
       return
     }
 
+    if (!permit) {
+      setDownloadState("error")
+      setDownloadError(
+        "Download authorization is missing. Please verify your phone number again."
+      )
+      return
+    }
+
     setDownloadState("downloading")
     setDownloadError(null)
     try {
-      await onVerified(id)
+      await onVerified(id, permit)
       setDownloadState("done")
     } catch (error) {
       setDownloadState("error")
@@ -146,6 +165,7 @@ export function DownloadPdfVerifyDialog({
 
   async function finishVerificationAndDownload(
     id: string | null,
+    permit: string | null,
     saved: boolean,
     saveError?: string
   ) {
@@ -161,7 +181,7 @@ export function DownloadPdfVerifyDialog({
       return
     }
 
-    await requestPdfDownload(id)
+    await requestPdfDownload(id, permit)
   }
 
   async function handleRequestOtp() {
@@ -171,12 +191,7 @@ export function DownloadPdfVerifyDialog({
       setError(null)
       setIsRequestingOtp(true)
 
-      if (!executeV3) {
-        setError("reCAPTCHA is not ready. Please try again.")
-        return
-      }
-
-      const recaptcha = await executeV3("example")
+      const recaptcha = await verifyRecaptchaOnClient(() => executeV3)
 
       const res = await fetch("/api/download/request-otp", {
         method: "POST",
@@ -198,8 +213,12 @@ export function DownloadPdfVerifyDialog({
       }
       setStep("otp")
       setOtp("")
-    } catch {
-      setError("Could not send verification code. Try again.")
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not send verification code. Try again."
+      )
     } finally {
       setIsRequestingOtp(false)
     }
@@ -216,6 +235,8 @@ export function DownloadPdfVerifyDialog({
       setError(null)
       setIsVerifying(true)
 
+      const recaptcha = await verifyRecaptchaOnClient(() => executeV3)
+
       const res = await fetch("/api/download/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -223,21 +244,33 @@ export function DownloadPdfVerifyDialog({
           phone_number: trimmedPhone,
           full_name: trimmedName,
           otp: value,
+          recaptcha,
         }),
       })
       const data = (await res.json()) as {
         error?: string
         success?: boolean
+        permit?: string
       }
       if (!res.ok) {
         setError(data.error ?? "Invalid code. Try again.")
         return
       }
 
-      // After successful OTP verification, send the draft to the resumes API
+      if (!data.permit) {
+        setError("Verification succeeded but download authorization failed.")
+        return
+      }
+
+      setPermitToken(data.permit)
+      storeDownloadPermit(data.permit)
+
       const resumeRes = await fetch("/api/resumes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Download-Permit": data.permit,
+        },
         body: JSON.stringify(draft),
       })
 
@@ -260,11 +293,16 @@ export function DownloadPdfVerifyDialog({
 
       await finishVerificationAndDownload(
         currentId,
+        data.permit,
         saved,
         resumeData.error
       )
-    } catch {
-      setError("Verification failed. Try again.")
+    } catch (verifyError) {
+      setError(
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Verification failed. Try again."
+      )
     } finally {
       setIsVerifying(false)
     }
@@ -438,11 +476,11 @@ export function DownloadPdfVerifyDialog({
                   Visit JobMedia
                 </a>
               </Button>
-              {resumeId && downloadState === "error" ? (
+              {resumeId && permitToken && downloadState === "error" ? (
                 <Button
                   type="button"
                   className="gap-1.5"
-                  onClick={() => void requestPdfDownload(resumeId)}
+                  onClick={() => void requestPdfDownload(resumeId, permitToken)}
                 >
                   <Download className="size-4" aria-hidden />
                   Download again
@@ -484,7 +522,7 @@ export function DownloadPdfVerifyDialog({
               type="button"
               className="cursor-pointer sm:min-w-[7.5rem]"
               onClick={handleRequestOtp}
-              disabled={!canVerifyDetails || isRequestingOtp}
+              disabled={!canVerifyDetails || isRequestingOtp || isRecaptchaLoading}
             >
               {isRequestingOtp ? "Sending code…" : "Send code"}
             </Button>
@@ -505,7 +543,7 @@ export function DownloadPdfVerifyDialog({
                 type="button"
                 className="cursor-pointer sm:min-w-[9rem]"
                 onClick={() => handleVerifyOtp()}
-                disabled={otp.length !== 6 || isVerifying}
+                disabled={otp.length !== 6 || isVerifying || isRecaptchaLoading}
               >
                 {isVerifying ? "Verifying…" : "Verify & continue"}
               </Button>

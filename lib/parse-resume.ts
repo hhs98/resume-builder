@@ -12,13 +12,16 @@ import {
   type WorkHistoryItem,
 } from "@/lib/resume-draft"
 import { MONTHS } from "@/lib/resume-form-constants"
+import {
+  sanitizeHttpsUrl,
+  sanitizePhotoDataUrl,
+} from "@/lib/security/sanitize-resume"
 import { generateId } from "@/lib/utils"
 
 export const MAX_RESUME_PDF_BYTES = 5 * 1024 * 1024
 export const MAX_RESUME_PDF_SIZE_MB = 5
 export const MAX_RESUME_PDF_PAGES = 5
 export const MAX_RESUME_TEXT_CHARS = 14_000
-export const RESUME_PARSE_HOURLY_LIMIT = 5
 
 export type ResumePdfPageInfo = {
   totalPages: number
@@ -356,7 +359,9 @@ function normalizeContact(
     division: asString(contact.division),
     phone: asString(contact.phone),
     email: asString(contact.email),
-    photoDataUrl: null,
+    photoDataUrl: sanitizePhotoDataUrl(
+      typeof contact.photoDataUrl === "string" ? contact.photoDataUrl : null
+    ),
   }
 }
 
@@ -448,7 +453,7 @@ function normalizeEducation(value: unknown): ResumeDraft["education"] {
     graduationMonth: normalizeMonth(education.graduationMonth),
     graduationYear: normalizeYear(education.graduationYear),
     description: asString(education.description),
-    projectUrl: asString(education.projectUrl),
+    projectUrl: sanitizeHttpsUrl(asString(education.projectUrl)),
     gpa: asString(education.gpa),
     awards: normalizeAwards(education.awards),
   }

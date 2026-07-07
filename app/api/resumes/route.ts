@@ -1,10 +1,31 @@
 import { NextResponse } from "next/server"
+
 import { prisma } from "@/lib/prisma"
 import type { ResumeDraft } from "@/lib/resume-draft"
+import { requireDownloadPermit } from "@/lib/security/download-permit"
+import { enforceRateLimit } from "@/lib/security/rate-limit-api"
+import { sanitizeResumeDraftForSave } from "@/lib/security/sanitize-resume"
 
 export async function POST(req: Request) {
+  const rateLimited = enforceRateLimit(
+    req,
+    "resume-create",
+    { limit: 10, windowMs: 60 * 60 * 1000 },
+    "Too many resume saves. Please try again later."
+  )
+  if (rateLimited) return rateLimited
+
+  const permit = requireDownloadPermit(req)
+  if (!permit) {
+    return NextResponse.json(
+      { error: "A valid download permit is required. Verify your phone number first." },
+      { status: 401 }
+    )
+  }
+
   try {
-    const draft: ResumeDraft = await req.json()
+    const body = (await req.json()) as ResumeDraft
+    const draft = sanitizeResumeDraftForSave(body)
 
     const resume = await prisma.resume.create({
       data: {
@@ -72,9 +93,21 @@ export async function POST(req: Request) {
       },
     })
 
-    return NextResponse.json({ success: true, id: resume.id })
+    return NextResponse.json({
+      success: true,
+      id: resume.id,
+    })
   } catch (error) {
     console.error("Failed to save resume:", error)
-    return NextResponse.json({ success: false, error: "Failed to save resume" }, { status: 500 })
+
+    const message =
+      process.env.NODE_ENV === "development" && error instanceof Error
+        ? error.message
+        : "Failed to save resume"
+
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    )
   }
 }

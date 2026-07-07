@@ -2,8 +2,6 @@ import { NextResponse } from "next/server"
 
 import { toUserFacingAiError } from "@/lib/ai-errors"
 import {
-  AI_ENHANCE_HOURLY_LIMIT,
-  AI_ENHANCE_WINDOW_MS,
   buildEnhanceSummaryPrompt,
   normalizeEnhancedSummaries,
   SUMMARY_CHAR_LIMIT,
@@ -11,8 +9,8 @@ import {
 } from "@/lib/enhance-summary"
 import { generateWithOllama } from "@/lib/ollama"
 import {
-  checkRateLimit,
-  getClientIp,
+  AI_RATE_LIMIT_ERROR,
+  checkAiRateLimit,
   rateLimitHeaders,
 } from "@/lib/rate-limit"
 
@@ -31,18 +29,11 @@ function isEnhanceSummaryInput(value: unknown): value is EnhanceSummaryInput {
 
 export async function POST(request: Request) {
   try {
-    const clientIp = getClientIp(request)
-    const rateLimit = checkRateLimit(`ai-enhance-summary:${clientIp}`, {
-      limit: AI_ENHANCE_HOURLY_LIMIT,
-      windowMs: AI_ENHANCE_WINDOW_MS,
-    })
+    const rateLimit = checkAiRateLimit(request)
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        {
-          error:
-            "AI enhance limit reached. You can make up to 5 requests per hour from this network.",
-        },
+        { error: AI_RATE_LIMIT_ERROR },
         {
           status: 429,
           headers: rateLimitHeaders(rateLimit),

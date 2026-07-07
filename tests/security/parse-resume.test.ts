@@ -25,16 +25,7 @@ describe("parse-resume upload validation", () => {
     expect(result).toEqual({ error: "Only PDF files are allowed." })
   })
 
-  it("rejects files larger than 5 MB", () => {
-    const file = new File([new Uint8Array(MAX_RESUME_PDF_BYTES + 1)], "big.pdf", {
-      type: "application/pdf",
-    })
-
-    const result = validateResumePdfUpload(file)
-    expect(result).toMatchObject({ error: expect.stringContaining("too large") })
-  })
-
-  it("accepts valid pdf files", () => {
+  it("accepts valid pdf files by extension", () => {
     const file = new File(["%PDF-1.4"], "resume.pdf", {
       type: "application/pdf",
     })
@@ -43,11 +34,13 @@ describe("parse-resume upload validation", () => {
     expect("file" in result).toBe(true)
   })
 
-  it("allows pdf extension even when mime type is empty (spoofing gap)", () => {
-    const file = new File(["not really a pdf"], "malware.pdf", { type: "" })
+  it("rejects files larger than 5 MB", () => {
+    const file = new File([new Uint8Array(MAX_RESUME_PDF_BYTES + 1)], "big.pdf", {
+      type: "application/pdf",
+    })
 
     const result = validateResumePdfUpload(file)
-    expect("file" in result).toBe(true)
+    expect(result).toMatchObject({ error: expect.stringContaining("too large") })
   })
 })
 
@@ -125,7 +118,7 @@ describe("normalizeParsedResume security", () => {
     expect(draft.languages[0]?.rating).toBe(4)
     expect(draft.workHistory[0]?.remote).toBe(false)
     expect(draft.education.degree).toBe("")
-    expect(draft.education.projectUrl).toBe("javascript:alert(1)")
+    expect(draft.education.projectUrl).toBe("")
   })
 
   it("does not crash on prototype pollution-style keys", () => {

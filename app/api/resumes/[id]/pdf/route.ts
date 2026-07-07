@@ -1,34 +1,36 @@
 import { NextResponse } from "next/server"
 
 import { getResumeDraftById } from "@/lib/get-resume-draft-from-db"
+import { requireDownloadPermit } from "@/lib/security/download-permit"
+import { buildResumePrintUrl } from "@/lib/security/preview-url"
+import { enforceRateLimit } from "@/lib/security/rate-limit-api"
 
 const GOTENBERG_URL =
   process.env.GOTENBERG_URL ??
   "https://demo.gotenberg.dev/forms/chromium/convert/url"
 
-/** CSS selector present only after resume HTML is in the DOM. */
 const RESUME_READY_SELECTOR = "#resume-print-preview[data-resume-ready='true']"
-
-function getPreviewBaseUrl(req: Request): string {
-  if (process.env.RESUME_PREVIEW_BASE_URL) {
-    return process.env.RESUME_PREVIEW_BASE_URL.replace(/\/$/, "")
-  }
-
-  const host =
-    req.headers.get("x-forwarded-host") ?? req.headers.get("host")
-  const proto = req.headers.get("x-forwarded-proto") ?? "http"
-
-  if (host && !host.includes("localhost") && !host.startsWith("127.0.0.1")) {
-    return `${proto}://${host}`
-  }
-
-  return "https://cv.jobmedia.com.bd"
-}
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rateLimited = enforceRateLimit(
+    req,
+    "resume-pdf",
+    { limit: 10, windowMs: 60 * 60 * 1000 },
+    "Too many PDF downloads. Please try again later."
+  )
+  if (rateLimited) return rateLimited
+
+  const permit = requireDownloadPermit(req)
+  if (!permit) {
+    return NextResponse.json(
+      { error: "A valid download permit is required." },
+      { status: 401 }
+    )
+  }
+
   try {
     const { id } = await params
 
@@ -37,14 +39,10 @@ export async function POST(
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
 
-    const previewBaseUrl = getPreviewBaseUrl(req)
-    // Server-rendered print page — resume HTML is in the initial response (no client fetch).
-    const previewUrl = `${previewBaseUrl}/my-resume/preview/${id}`
+    const previewUrl = buildResumePrintUrl(id)
 
     const formData = new FormData()
     formData.append("url", previewUrl)
-    // Gotenberg: wait until the ready marker exists before printing.
-    // https://gotenberg.dev/docs/convert-with-chromium/convert-url-to-pdf
     formData.append("waitForSelector", RESUME_READY_SELECTOR)
     formData.append("paperWidth", "8.27")
     formData.append("paperHeight", "11.7")
@@ -61,9 +59,14 @@ export async function POST(
 
     if (!gotenbergRes.ok) {
       const detail = await gotenbergRes.text()
-      console.error("Gotenberg PDF error:", detail)
+      console.error("Gotenberg PDF error:", previewUrl, detail)
       return NextResponse.json(
-        { error: "Failed to generate PDF" },
+        {
+          error:
+            process.env.NODE_ENV === "development"
+              ? `Failed to generate PDF. Check RESUME_PREVIEW_BASE_URL and GOTENBERG_URL.`
+              : "Failed to generate PDF",
+        },
         { status: 502 }
       )
     }

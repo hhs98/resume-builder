@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
+
 import { prisma } from "@/lib/prisma"
 import { parseEducationAwards } from "@/lib/resume-draft"
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -24,7 +25,6 @@ export async function GET(
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
 
-    // Transform database model back to ResumeDraft format
     const draft = {
       templateId: resume.templateId,
       contact: {

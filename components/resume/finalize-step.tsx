@@ -16,7 +16,7 @@ import { DownloadPdfVerifyDialog } from "@/components/resume/download-pdf-verify
 import { ResumePreview } from "@/components/resume/resume-preview"
 import { Button } from "@/components/ui/button"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
-import { downloadResumePdfUrl } from "@/lib/download-resume-pdf"
+import { downloadResumePdfWithFallback } from "@/lib/download-resume-pdf"
 import {
   computeResumeCompleteness,
   FINALIZE_SECTIONS,
@@ -53,7 +53,7 @@ const TEMPLATES: {
   {
     id: "executive",
     name: "Executive",
-    description: "Sophisticated layout with professional serif typography.",
+    description: "Sidebar layout with skills and contact in a colored panel.",
     icon: Award,
   },
 ]
@@ -128,16 +128,16 @@ export function FinalizeStep() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  async function handleDownloadAfterVerify(savedResumeId: string | null) {
-    if (!savedResumeId) {
-      throw new Error("Resume was not saved")
-    }
-
+  async function handleDownloadAfterVerify(
+    savedResumeId: string,
+    permitToken: string
+  ) {
     setIsDownloadingPdf(true)
     try {
-      await downloadResumePdfUrl(
+      await downloadResumePdfWithFallback(
         savedResumeId,
-        displayName.trim() || "resume"
+        displayName.trim() || "resume",
+        { permitToken }
       )
     } catch (error) {
       console.error("Failed to generate PDF", error)
@@ -319,19 +319,23 @@ export function FinalizeStep() {
             className="min-w-0 xl:sticky xl:top-6"
             id="resume-preview-panel"
           >
-            <div className="overflow-hidden rounded-2xl border border-border/60 bg-[#eef0f8] p-4 sm:p-5">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-b from-slate-50 to-white p-4 shadow-sm sm:p-5">
               <div className="mb-4">
-                <span className="rounded-full bg-blue-600 px-3 py-1 text-[0.65rem] font-semibold tracking-[0.14em] text-white uppercase">
+                <span className="rounded-full bg-[#1e3a5f] px-3 py-1 text-[0.65rem] font-semibold tracking-[0.14em] text-white uppercase">
                   Preview
                 </span>
               </div>
 
-              <div className="flex justify-center overflow-hidden rounded-xl bg-white p-3 shadow-md sm:p-4">
-                <div
-                  id="resume-print-preview"
-                  className="origin-top scale-[0.85] sm:scale-[0.65] md:scale-[0.72] lg:scale-[0.8] xl:scale-[0.85]"
-                >
-                  <ResumePreview draft={draft} templateId={draft.templateId} />
+              <div className="flex justify-center overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+                <div className="origin-top scale-[0.85] sm:scale-[0.65] md:scale-[0.72] lg:scale-[0.8] xl:scale-[0.85]">
+                  <div id="resume-print-preview" data-resume-ready="true">
+                    <ResumePreview
+                      draft={draft}
+                      templateId={draft.templateId}
+                      tone="preview"
+                      className="shadow-none ring-1 ring-slate-200"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

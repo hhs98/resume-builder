@@ -1,8 +1,5 @@
 export const SUMMARY_CHAR_LIMIT = 500
 
-export const AI_ENHANCE_HOURLY_LIMIT = 5
-export const AI_ENHANCE_WINDOW_MS = 60 * 60 * 1000
-
 export type EnhanceSummaryInput = {
   input: string
   jobTitle: string

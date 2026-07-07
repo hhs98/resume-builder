@@ -6,11 +6,10 @@ import {
   normalizeEnhancedResponsibilities,
   type EnhanceWorkHistoryInput,
 } from "@/lib/enhance-work-history"
-import { AI_ENHANCE_HOURLY_LIMIT, AI_ENHANCE_WINDOW_MS } from "@/lib/enhance-skills"
 import { generateWithOllama } from "@/lib/ollama"
 import {
-  checkRateLimit,
-  getClientIp,
+  AI_RATE_LIMIT_ERROR,
+  checkAiRateLimit,
   rateLimitHeaders,
 } from "@/lib/rate-limit"
 
@@ -36,19 +35,11 @@ function isEnhanceWorkHistoryInput(
 
 export async function POST(request: Request) {
   try {
-    const clientIp = getClientIp(request)
-    const rateLimit = checkRateLimit(`ai-enhance-work-history:${clientIp}`, {
-      limit: AI_ENHANCE_HOURLY_LIMIT,
-      windowMs: AI_ENHANCE_WINDOW_MS,
-    })
-    // console.log(clientIp, rateLimit)
+    const rateLimit = checkAiRateLimit(request)
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        {
-          error:
-            "AI Suggest limit reached. You can make up to 5 requests per hour from this network.",
-        },
+        { error: AI_RATE_LIMIT_ERROR },
         {
           status: 429,
           headers: rateLimitHeaders(rateLimit),

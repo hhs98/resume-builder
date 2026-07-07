@@ -22,21 +22,25 @@ import {
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
-
-const GOLD = "#d49000"
-const CONTACT_BAR = "#f5f5f5"
+import {
+  getModernPreviewColors,
+  type ResumePreviewTone,
+} from "@/lib/resume-preview-tone"
 
 type ModernGoldPreviewProps = {
   draft: ResumeDraft
   className?: string
   id?: string
+  tone?: ResumePreviewTone
 }
 
 export function ModernGoldPreview({
   draft,
   className,
   id,
+  tone = "default",
 }: ModernGoldPreviewProps) {
+  const colors = getModernPreviewColors(tone)
   const name = getFullName(draft) || "Your name"
   const address = getContactLocation(draft)
   const gradDate = formatGraduationCompact(draft)
@@ -83,7 +87,7 @@ export function ModernGoldPreview({
       {/* HEADER */}
       <header
         className="flex items-center gap-5 px-8 py-6"
-        style={{ backgroundColor: GOLD }}
+        style={{ backgroundColor: colors.gold }}
       >
         {draft.contact.photoDataUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -109,10 +113,10 @@ export function ModernGoldPreview({
       {hasContact ? (
         <div
           className="grid grid-cols-[auto_1fr_auto] items-stretch px-8 py-4"
-          style={{ backgroundColor: CONTACT_BAR }}
+          style={{ backgroundColor: colors.contactBar }}
         >
           <div className="flex items-center pr-6">
-            <p className="text-sm font-bold" style={{ color: GOLD }}>
+            <p className="text-sm font-bold" style={{ color: colors.gold }}>
               Contact
             </p>
           </div>
@@ -231,7 +235,7 @@ export function ModernGoldPreview({
                     <div
                       className="h-full rounded-full"
                       style={{
-                        backgroundColor: GOLD,
+                        backgroundColor: colors.gold,
                         width: `${(skill.rating / 5) * 100}%`,
                       }}
                     />
@@ -256,7 +260,7 @@ export function ModernGoldPreview({
                     <div
                       className="h-full rounded-full"
                       style={{
-                        backgroundColor: GOLD,
+                        backgroundColor: colors.gold,
                         width: `${(lang.rating / 4) * 100}%`,
                       }}
                     />
@@ -298,7 +302,8 @@ export function ModernGoldPreview({
                   draft={draft}
                   className="mt-2"
                   textClassName="text-[11px] text-neutral-800"
-                  linkClassName="text-[11px] text-amber-800 underline underline-offset-2"
+                  linkClassName="text-[11px] underline underline-offset-2"
+                  linkStyle={{ color: colors.link }}
                 />
               </div>
             </div>

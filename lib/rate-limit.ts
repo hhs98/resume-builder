@@ -15,6 +15,11 @@ export type RateLimitResult = {
   resetAt: number
 }
 
+export const AI_HOURLY_LIMIT = 5
+export const AI_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
+export const AI_RATE_LIMIT_ERROR =
+  "AI request limit reached. You can make up to 5 AI requests per hour from this network."
+
 const store = new Map<string, RateLimitEntry>()
 
 function pruneExpiredEntries(now: number) {
@@ -39,6 +44,13 @@ export function getClientIp(request: Request): string {
   if (cfConnectingIp) return cfConnectingIp
 
   return "unknown"
+}
+
+export function checkAiRateLimit(request: Request): RateLimitResult {
+  return checkRateLimit(`ai:${getClientIp(request)}`, {
+    limit: AI_HOURLY_LIMIT,
+    windowMs: AI_RATE_LIMIT_WINDOW_MS,
+  })
 }
 
 export function checkRateLimit(

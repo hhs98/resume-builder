@@ -22,9 +22,10 @@ import {
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
-
-const RED = "#c41e3a"
-const PINK = "#f8d4da"
+import {
+  getClassicPreviewColors,
+  type ResumePreviewTone,
+} from "@/lib/resume-preview-tone"
 
 type ClassicRedPreviewProps = {
   draft: ResumeDraft & {
@@ -32,13 +33,16 @@ type ClassicRedPreviewProps = {
   }
   className?: string
   id?: string
+  tone?: ResumePreviewTone
 }
 
 export function ClassicRedPreview({
   draft,
   className,
   id,
+  tone = "default",
 }: ClassicRedPreviewProps) {
+  const colors = getClassicPreviewColors(tone)
   const name = (getFullName(draft) || "Your name").toUpperCase()
   const address = getContactLocation(draft)
   const gradDate = formatGraduationCompact(draft)
@@ -92,7 +96,7 @@ export function ClassicRedPreview({
         className
       )}
     >
-      <div className="h-3 w-full" style={{ backgroundColor: PINK }} />
+      <div className="h-3 w-full" style={{ backgroundColor: colors.pink }} />
 
       {/* HEADER */}
       <header className="flex flex-col items-center px-10 pt-6 pb-2 text-center">
@@ -117,19 +121,19 @@ export function ClassicRedPreview({
 
         <h1
           className="mt-4 text-2xl font-bold tracking-[0.2em]"
-          style={{ color: RED }}
+          style={{ color: colors.red }}
         >
           {name}
         </h1>
       </header>
 
-      <RedDivider className="mx-10" />
+      <RedDivider className="mx-10" colors={colors} />
 
       <div className="space-y-0 px-10 pb-8">
         {/* CONTACT */}
         {hasContact ? (
           <section>
-            <SectionHeader title="Contact" />
+            <SectionHeader title="Contact" colors={colors} />
             <div className="mt-3 grid grid-cols-3 gap-4 text-[10px]">
               {address ? (
                 <div>
@@ -162,25 +166,25 @@ export function ClassicRedPreview({
                 <span />
               )}
             </div>
-            <RedDivider />
+            <RedDivider colors={colors} />
           </section>
         ) : null}
 
         {/* SUMMARY */}
         {hasSummary ? (
           <section>
-            <SectionHeader title="Resume Objective" />
+            <SectionHeader title="Resume Objective" colors={colors} />
             <p className="mt-3 text-[11px] leading-relaxed whitespace-pre-wrap text-neutral-800">
               {draft.summary.trim()}
             </p>
-            <RedDivider />
+            <RedDivider colors={colors} />
           </section>
         ) : null}
 
         {/* EDUCATION */}
         {hasEducation ? (
           <section>
-            <SectionHeader title="Education" />
+            <SectionHeader title="Education" colors={colors} />
             <div className="mt-3 space-y-3">
               {educationDegreeLine ? (
                 <p className="text-[11px] text-neutral-800">
@@ -198,17 +202,18 @@ export function ClassicRedPreview({
                 draft={draft}
                 className="mt-2"
                 textClassName="text-[11px] text-neutral-800"
-                linkClassName="text-[11px] text-red-800 underline underline-offset-2"
+                linkClassName="text-[11px] underline underline-offset-2"
+                linkStyle={{ color: colors.link }}
               />
             </div>
-            <RedDivider />
+            <RedDivider colors={colors} />
           </section>
         ) : null}
 
         {/* SKILLS */}
         {hasSkills ? (
           <section>
-            <SectionHeader title="Skills" />
+            <SectionHeader title="Skills" colors={colors} />
             <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
               {skills.map((skill) => (
                 <li
@@ -218,18 +223,18 @@ export function ClassicRedPreview({
                   <span className="min-w-0 flex-1 leading-snug">
                     {skill.name}
                   </span>
-                  <SkillDots rating={skill.rating} />
+                  <SkillDots rating={skill.rating} colors={colors} />
                 </li>
               ))}
             </ul>
-            <RedDivider />
+            <RedDivider colors={colors} />
           </section>
         ) : null}
 
         {/* LANGUAGES */}
         {hasLanguages ? (
           <section>
-            <SectionHeader title="Languages" />
+            <SectionHeader title="Languages" colors={colors} />
             <ul className="mt-3 grid grid-cols-3 gap-x-4 gap-y-3">
               {languages.map((lang) => (
                 <li
@@ -239,18 +244,18 @@ export function ClassicRedPreview({
                   <span className="min-w-0 flex-1 leading-snug">
                     {lang.name}
                   </span>
-                  <SkillDots rating={lang.rating} max={4} />
+                  <SkillDots rating={lang.rating} max={4} colors={colors} />
                 </li>
               ))}
             </ul>
-            <RedDivider />
+            <RedDivider colors={colors} />
           </section>
         ) : null}
 
         {/* WORK HISTORY (FIXED MULTI) */}
         {hasWork ? (
   <section>
-    <SectionHeader title="Work History" />
+    <SectionHeader title="Work History" colors={colors} />
 
     <div className="mt-3 space-y-6">
       {workHistory.map((work, index) => {
@@ -295,14 +300,14 @@ export function ClassicRedPreview({
         )
       })}
     </div>
-    <RedDivider />
+    <RedDivider colors={colors} />
   </section>
 ) : null}
 
         {/* REFERENCES */}
         {hasReferences ? (
           <section>
-            <SectionHeader title="References" />
+            <SectionHeader title="References" colors={colors} />
             <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-6">
               {references.map((ref) => (
                 <div key={ref.id} className="space-y-1">
@@ -337,30 +342,53 @@ export function ClassicRedPreview({
   )
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({
+  title,
+  colors,
+}: {
+  title: string
+  colors: ReturnType<typeof getClassicPreviewColors>
+}) {
   return (
     <div className="flex min-h-[1.25rem] items-center">
       <h2
         className="shrink-0 pr-2 text-[11px] font-bold tracking-widest uppercase"
-        style={{ color: RED }}
+        style={{ color: colors.red }}
       >
         {title}
       </h2>
-      <div className="h-3 min-w-0 flex-1" style={{ backgroundColor: PINK }} />
+      <div
+        className="h-3 min-w-0 flex-1"
+        style={{ backgroundColor: colors.pink }}
+      />
     </div>
   )
 }
 
-function RedDivider({ className }: { className?: string }) {
+function RedDivider({
+  className,
+  colors,
+}: {
+  className?: string
+  colors: ReturnType<typeof getClassicPreviewColors>
+}) {
   return (
     <hr
       className={cn("my-4 border-0 border-t", className)}
-      style={{ borderColor: RED }}
+      style={{ borderColor: colors.red }}
     />
   )
 }
 
-function SkillDots({ rating, max = 5 }: { rating: number; max?: number }) {
+function SkillDots({
+  rating,
+  max = 5,
+  colors,
+}: {
+  rating: number
+  max?: number
+  colors: ReturnType<typeof getClassicPreviewColors>
+}) {
   return (
     <span className="inline-flex shrink-0 gap-0.5" aria-hidden>
       {Array.from({ length: max }).map((_, i) => {
@@ -370,8 +398,8 @@ function SkillDots({ rating, max = 5 }: { rating: number; max?: number }) {
             key={n}
             className="size-2 rounded-full border"
             style={{
-              borderColor: RED,
-              backgroundColor: n <= rating ? RED : "transparent",
+              borderColor: colors.red,
+              backgroundColor: n <= rating ? colors.red : "transparent",
             }}
           />
         )

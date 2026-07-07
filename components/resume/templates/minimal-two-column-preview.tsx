@@ -24,21 +24,25 @@ import {
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
-
-const PINK = "#f8d4da"
-const INK = "#334155"
+import {
+  getMinimalPreviewColors,
+  type ResumePreviewTone,
+} from "@/lib/resume-preview-tone"
 
 type MinimalTwoColumnPreviewProps = {
   draft: ResumeDraft
   className?: string
   id?: string
+  tone?: ResumePreviewTone
 }
 
 export function MinimalTwoColumnPreview({
   draft,
   className,
   id,
+  tone = "default",
 }: MinimalTwoColumnPreviewProps) {
+  const colors = getMinimalPreviewColors(tone)
   const name = (getFullName(draft) || "Your name").toUpperCase()
   const address = getContactLocation(draft)
   const gradDate = formatGraduationCompact(draft)
@@ -87,10 +91,10 @@ export function MinimalTwoColumnPreview({
         "min-h-[297mm] font-serif text-[11px] leading-relaxed",
         className
       )}
-      style={{ color: INK }}
+      style={{ color: colors.ink }}
     >
       {/* HEADER */}
-      <div className="relative px-8 pt-8 pb-7" style={{ backgroundColor: PINK }}>
+      <div className="relative px-8 pt-8 pb-7" style={{ backgroundColor: colors.pink }}>
         <h1 className="text-[28px] font-bold uppercase tracking-wide">
           {name}
         </h1>
@@ -188,7 +192,7 @@ export function MinimalTwoColumnPreview({
                 {skills.map((skill) => (
                   <li key={skill.id} className="flex justify-between text-[10px]">
                     {skill.name}
-                    <SegmentedRating value={skill.rating} />
+                    <SegmentedRating value={skill.rating} colors={colors} />
                   </li>
                 ))}
               </ul>
@@ -202,7 +206,7 @@ export function MinimalTwoColumnPreview({
                 {languages.map((lang) => (
                   <li key={lang.id} className="flex justify-between text-[10px]">
                     {lang.name}
-                    <SegmentedRating value={lang.rating} max={4} />
+                    <SegmentedRating value={lang.rating} max={4} colors={colors} />
                   </li>
                 ))}
               </ul>
@@ -222,7 +226,8 @@ export function MinimalTwoColumnPreview({
                   draft={draft}
                   className="mt-2"
                   textClassName="text-[10px] text-slate-700"
-                  linkClassName="text-[10px] text-slate-800 underline underline-offset-2"
+                  linkClassName="text-[10px] underline underline-offset-2"
+                  linkStyle={{ color: colors.link }}
                 />
               </div>
             </section>
@@ -265,7 +270,15 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-function SegmentedRating({ value, max = 5 }: { value: number; max?: number }) {
+function SegmentedRating({
+  value,
+  max = 5,
+  colors,
+}: {
+  value: number
+  max?: number
+  colors: ReturnType<typeof getMinimalPreviewColors>
+}) {
   return (
     <span className="inline-flex gap-px">
       {Array.from({ length: max }).map((_, i) => {
@@ -275,7 +288,7 @@ function SegmentedRating({ value, max = 5 }: { value: number; max?: number }) {
             key={n}
             className="h-2 w-2.5"
             style={{
-              backgroundColor: n <= value ? PINK : "#e5e7eb",
+              backgroundColor: n <= value ? colors.rating : "#e5e7eb",
             }}
           />
         )

@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server"
 
 import { toUserFacingAiError } from "@/lib/ai-errors"
-import { AI_ENHANCE_WINDOW_MS } from "@/lib/enhance-summary"
 import {
   isResumePdfPageLimitMessage,
   parseResumePdf,
-  RESUME_PARSE_HOURLY_LIMIT,
   validateResumePdfUpload,
 } from "@/lib/parse-resume"
+import { isPdfBuffer, PDF_MAGIC_BYTE_ERROR } from "@/lib/security/pdf-validation"
 import {
-  checkRateLimit,
-  getClientIp,
+  AI_RATE_LIMIT_ERROR,
+  checkAiRateLimit,
   rateLimitHeaders,
 } from "@/lib/rate-limit"
 
@@ -19,18 +18,11 @@ export const maxDuration = 120
 
 export async function POST(request: Request) {
   try {
-    const clientIp = getClientIp(request)
-    const rateLimit = checkRateLimit(`resume-parse:${clientIp}`, {
-      limit: RESUME_PARSE_HOURLY_LIMIT,
-      windowMs: AI_ENHANCE_WINDOW_MS,
-    })
+    const rateLimit = checkAiRateLimit(request)
 
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        {
-          error:
-            "Upload limit reached. You can parse up to 5 resumes per hour from this network.",
-        },
+        { error: AI_RATE_LIMIT_ERROR },
         {
           status: 429,
           headers: rateLimitHeaders(rateLimit),
@@ -46,6 +38,11 @@ export async function POST(request: Request) {
     }
 
     const buffer = await validation.file.arrayBuffer()
+
+    if (!isPdfBuffer(buffer)) {
+      return NextResponse.json({ error: PDF_MAGIC_BYTE_ERROR }, { status: 400 })
+    }
+
     const { draft, pages } = await parseResumePdf(buffer)
 
     return NextResponse.json(

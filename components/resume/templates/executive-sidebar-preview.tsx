@@ -22,9 +22,10 @@ import {
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
-
-const SIDEBAR_GREEN = "#1a5c38"
-const SIDEBAR_HEADER_GREEN = "#2a6b47"
+import {
+  getExecutivePreviewColors,
+  type ResumePreviewTone,
+} from "@/lib/resume-preview-tone"
 
 const PROFICIENCY_LABELS: Record<number, string> = {
   1: "Beginner",
@@ -37,13 +38,16 @@ type ExecutiveSidebarPreviewProps = {
   draft: ResumeDraft
   className?: string
   id?: string
+  tone?: ResumePreviewTone
 }
 
 export function ExecutiveSidebarPreview({
   draft,
   className,
   id,
+  tone = "default",
 }: ExecutiveSidebarPreviewProps) {
+  const colors = getExecutivePreviewColors(tone)
   const name = getFullName(draft) || "Your name"
   const address = getContactLocation(draft)
 
@@ -96,7 +100,7 @@ export function ExecutiveSidebarPreview({
       {/* SIDEBAR */}
       <aside
         className="flex w-[32%] min-w-[140px] shrink-0 flex-col px-5 py-8 text-white"
-        style={{ backgroundColor: SIDEBAR_GREEN }}
+        style={{ backgroundColor: colors.sidebar }}
       >
         <div className="flex flex-col items-center text-center">
           {draft.contact.photoDataUrl ? (
@@ -120,7 +124,7 @@ export function ExecutiveSidebarPreview({
         </div>
 
         {hasContact ? (
-          <SidebarBlock title="Contact">
+          <SidebarBlock title="Contact" colors={colors}>
             {address && <ContactRow label="Address" value={address} />}
             {draft.contact.phone.trim() && (
               <ContactRow label="Phone" value={draft.contact.phone} />
@@ -132,7 +136,7 @@ export function ExecutiveSidebarPreview({
         ) : null}
 
         {hasSkills ? (
-          <SidebarBlock title="Skills">
+          <SidebarBlock title="Skills" colors={colors}>
             <ul className="flex flex-wrap gap-1.5">
               {skills.map((skill) => (
                 <li
@@ -147,7 +151,7 @@ export function ExecutiveSidebarPreview({
         ) : null}
 
         {hasLanguages ? (
-          <SidebarBlock title="Languages">
+          <SidebarBlock title="Languages" colors={colors}>
             <div className="space-y-2">
               {languages.map((lang) => (
                 <div key={lang.id}>
@@ -173,7 +177,7 @@ export function ExecutiveSidebarPreview({
         {/* WORK HISTORY */}
         {hasWork ? (
           <section className={hasSummary ? "mt-6" : ""}>
-            <MainSectionHeader title="Work History" />
+            <MainSectionHeader title="Work History" colors={colors} />
 
             <div className="mt-4 space-y-6">
               {workHistory.map((work, index) => {
@@ -220,7 +224,7 @@ export function ExecutiveSidebarPreview({
         {/* EDUCATION */}
         {hasEducation ? (
           <section className="mt-2">
-            <MainSectionHeader title="Education" />
+            <MainSectionHeader title="Education" colors={colors} />
             <div className="mt-4">
               <p className="font-bold text-neutral-900">{educationTitle}</p>
               <p className="text-[11px] text-neutral-600 italic">
@@ -233,7 +237,8 @@ export function ExecutiveSidebarPreview({
                 draft={draft}
                 className="mt-2"
                 textClassName="text-[11px] text-neutral-700"
-                linkClassName="text-[11px] text-emerald-900 underline underline-offset-2"
+                linkClassName="text-[11px] underline underline-offset-2"
+                linkStyle={{ color: colors.link }}
               />
             </div>
           </section>
@@ -242,7 +247,7 @@ export function ExecutiveSidebarPreview({
         {/* REFERENCES */}
         {hasReferences ? (
           <section className="mt-2">
-            <MainSectionHeader title="References" />
+            <MainSectionHeader title="References" colors={colors} />
             <div className="mt-4 grid grid-cols-2 gap-6">
               {references.map((ref) => (
                 <div key={ref.id} className="space-y-1">
@@ -278,15 +283,17 @@ export function ExecutiveSidebarPreview({
 function SidebarBlock({
   title,
   children,
+  colors,
 }: {
   title: string
   children: React.ReactNode
+  colors: ReturnType<typeof getExecutivePreviewColors>
 }) {
   return (
     <section className="mt-7">
       <h2
         className="mb-3 px-5 py-1.5 text-[11px] font-bold text-white"
-        style={{ backgroundColor: SIDEBAR_HEADER_GREEN }}
+        style={{ backgroundColor: colors.sidebarHeader }}
       >
         {title}
       </h2>
@@ -310,10 +317,18 @@ function ContactRow({
   )
 }
 
-function MainSectionHeader({ title }: { title: string }) {
+function MainSectionHeader({
+  title,
+  colors,
+}: {
+  title: string
+  colors: ReturnType<typeof getExecutivePreviewColors>
+}) {
   return (
     <div className="my-4">
-      <h2 className="text-[13px] font-bold text-[#1a5c38]">{title}</h2>
+      <h2 className="text-[13px] font-bold" style={{ color: colors.accent }}>
+        {title}
+      </h2>
       <hr className="mt-2 border-neutral-300" />
     </div>
   )

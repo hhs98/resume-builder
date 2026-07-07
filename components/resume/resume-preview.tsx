@@ -23,12 +23,14 @@ import { ClassicRedPreview } from "@/components/resume/templates/classic-red-pre
 import { MinimalTwoColumnPreview } from "@/components/resume/templates/minimal-two-column-preview"
 import { ModernGoldPreview } from "@/components/resume/templates/modern-gold-preview"
 import { cn } from "@/lib/utils"
+import type { ResumePreviewTone } from "@/lib/resume-preview-tone"
 
 type ResumePreviewProps = {
   draft: ResumeDraft
   templateId?: ResumeTemplateId
   className?: string
   id?: string
+  tone?: ResumePreviewTone
 }
 
 export function ResumePreview({
@@ -36,8 +38,11 @@ export function ResumePreview({
   templateId = draft.templateId,
   className,
   id,
+  tone = "default",
 }: ResumePreviewProps) {
-  // console.log(draft)
+  const resolvedTemplateId =
+    (templateId as string) === "executive-alt" ? "executive" : templateId
+
   const name = getFullName(draft) || "Your name"
   const location = getContactLocation(draft)
   const contactLine = [draft.contact.email, draft.contact.phone, location]
@@ -66,30 +71,44 @@ export function ResumePreview({
   const hasSummary = hasSummaryContent(draft)
   const hasContact = hasPreviewContact(draft)
 
-  if (templateId === "executive") {
+  if (resolvedTemplateId === "executive") {
     return (
-      <ExecutiveSidebarPreview draft={draft} className={className} id={id} />
+      <ExecutiveSidebarPreview
+        draft={draft}
+        className={className}
+        id={id}
+        tone={tone}
+      />
     )
   }
 
-  if (templateId === "modern") {
-    return <ModernGoldPreview draft={draft} className={className} id={id} />
-  }
-
-  if (templateId === "classic") {
-    return <ClassicRedPreview draft={draft} className={className} id={id} />
-  }
-
-  if (templateId === "minimal") {
+  if (resolvedTemplateId === "modern") {
     return (
-      <MinimalTwoColumnPreview draft={draft} className={className} id={id} />
+      <ModernGoldPreview draft={draft} className={className} id={id} tone={tone} />
+    )
+  }
+
+  if (resolvedTemplateId === "classic") {
+    return (
+      <ClassicRedPreview draft={draft} className={className} id={id} tone={tone} />
+    )
+  }
+
+  if (resolvedTemplateId === "minimal") {
+    return (
+      <MinimalTwoColumnPreview
+        draft={draft}
+        className={className}
+        id={id}
+        tone={tone}
+      />
     )
   }
 
   return (
     <article
       id={id}
-      data-resume-template={templateId}
+      data-resume-template={resolvedTemplateId}
       className={cn(
         "resume-preview mx-auto w-full max-w-[210mm] bg-white text-[11px] leading-relaxed text-neutral-900 shadow-sm",
         "min-h-[297mm] p-8 sm:p-10",

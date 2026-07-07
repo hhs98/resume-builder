@@ -1,7 +1,11 @@
 import { MONTHS } from "@/lib/resume-form-constants"
 import { generateId } from "@/lib/utils"
 
-export type ResumeTemplateId = "classic" | "modern" | "minimal" | "executive"
+export type ResumeTemplateId =
+  | "classic"
+  | "modern"
+  | "minimal"
+  | "executive"
 
 export type ResumeSkill = {
   id: string

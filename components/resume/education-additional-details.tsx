@@ -4,6 +4,7 @@ import {
   hasEducationAdditionalDetails,
   type ResumeDraft,
 } from "@/lib/resume-draft"
+import { sanitizeHttpsUrl } from "@/lib/security/sanitize-resume"
 import { cn } from "@/lib/utils"
 
 type EducationAdditionalDetailsProps = {
@@ -11,6 +12,7 @@ type EducationAdditionalDetailsProps = {
   className?: string
   textClassName?: string
   linkClassName?: string
+  linkStyle?: React.CSSProperties
 }
 
 export function EducationAdditionalDetails({
@@ -18,6 +20,7 @@ export function EducationAdditionalDetails({
   className,
   textClassName = "text-[11px] text-neutral-700",
   linkClassName = "text-[11px] text-blue-700 underline underline-offset-2",
+  linkStyle,
 }: EducationAdditionalDetailsProps) {
   const education = draft.education
 
@@ -26,6 +29,7 @@ export function EducationAdditionalDetails({
   }
 
   const awards = getPreviewEducationAwards(draft)
+  const projectUrl = sanitizeHttpsUrl(education.projectUrl)
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -50,16 +54,17 @@ export function EducationAdditionalDetails({
         </ul>
       ) : null}
 
-      {education.projectUrl.trim() ? (
+      {projectUrl ? (
         <p className={textClassName}>
           <span className="font-semibold text-neutral-900">Project:</span>{" "}
           <a
-            href={education.projectUrl.trim()}
+            href={projectUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={linkClassName}
+            style={linkStyle}
           >
-            {education.projectUrl.trim()}
+            {projectUrl}
           </a>
         </p>
       ) : null}
