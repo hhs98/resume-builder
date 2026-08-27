@@ -14,11 +14,14 @@ import {
 import { LandingFooter } from "@/components/landing/landing-footer"
 import { LandingHeader } from "@/components/landing/landing-header"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   aiErrorFromResponse,
   parseAiResponseJson,
 } from "@/lib/ai-errors"
 import {
+  MAX_RESUME_IMPORT_NOTES_CHARS,
   MAX_RESUME_PDF_BYTES,
   MAX_RESUME_PDF_PAGES,
   MAX_RESUME_PDF_SIZE_MB,
@@ -47,6 +50,7 @@ export function ImportResumeUpload() {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [description, setDescription] = useState("")
   const [pageInfo, setPageInfo] = useState<ResumePdfPageInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -150,6 +154,9 @@ export function ImportResumeUpload() {
     try {
       const formData = new FormData()
       formData.append("file", selectedFile)
+      if (description.trim()) {
+        formData.append("description", description.trim())
+      }
 
       const response = await fetch("/api/resume/parse", {
         method: "POST",
@@ -190,20 +197,28 @@ export function ImportResumeUpload() {
   }
 
   return (
-    <div className="light-surface flex min-h-svh flex-col bg-[#f8f9fb]">
+    <div className="light-surface relative flex min-h-svh flex-col bg-[#f4f7fb]">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#e8edf4_1px,transparent_1px),linear-gradient(to_bottom,#e8edf4_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_80%)]"
+        aria-hidden
+      />
       <LandingHeader />
 
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-10 sm:px-8 sm:py-12">
+      <main className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 py-10 sm:px-8 sm:py-12">
         <Link
           href="/"
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/80 hover:text-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden />
           Back
         </Link>
 
-        <header className="mt-8 space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
+        <div className="mt-8 rounded-2xl border border-border/50 bg-white p-6 shadow-sm shadow-black/[0.04] ring-1 ring-black/[0.02] sm:p-8">
+        <header className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#0A65CC]">
+            Import resume
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground md:text-3xl">
             Upload your resume
           </h1>
           <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
@@ -237,10 +252,10 @@ export function ImportResumeUpload() {
             onDrop={handleDrop}
             onClick={() => !isParsing && !isVerifying && inputRef.current?.click()}
             className={cn(
-              "cursor-pointer rounded-2xl border-2 border-dashed bg-white p-8 text-center shadow-sm transition-colors sm:p-10",
+              "cursor-pointer rounded-2xl border-2 border-dashed bg-white/80 p-8 text-center shadow-sm transition-all sm:p-10",
               isDragging
-                ? "border-blue-500 bg-blue-50/60"
-                : "border-blue-200 hover:border-blue-300 hover:bg-blue-50/30",
+                ? "border-[#0A65CC] bg-blue-50/60"
+                : "border-[#0A65CC]/25 hover:border-[#0A65CC]/50 hover:bg-blue-50/30",
               (isParsing || isVerifying) && "pointer-events-none opacity-70"
             )}
           >
@@ -254,7 +269,7 @@ export function ImportResumeUpload() {
               onChange={handleInputChange}
             />
 
-            <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-600">
+            <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0A65CC]/15 to-[#38BDF8]/15 text-[#0A65CC]">
               <Upload className="size-7" strokeWidth={1.75} aria-hidden />
             </span>
 
@@ -333,6 +348,37 @@ export function ImportResumeUpload() {
             </div>
           ) : null}
 
+          <div className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm sm:p-5">
+            <div className="space-y-2">
+              <Label htmlFor="resume-import-description">
+                Resume notes{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="resume-import-description"
+                value={description}
+                onChange={(e) =>
+                  setDescription(
+                    e.target.value.slice(0, MAX_RESUME_IMPORT_NOTES_CHARS)
+                  )
+                }
+                placeholder="Tell us how you'd like your CV built — target role, skills to highlight, missing details, or anything not clear in the PDF."
+                rows={4}
+                disabled={isParsing || isVerifying}
+                className="min-h-[100px] resize-y bg-white"
+              />
+              <p className="text-xs text-muted-foreground">
+                We use this when extracting your resume so the builder starts closer
+                to what you want.{" "}
+                <span className="tabular-nums">
+                  {description.length}/{MAX_RESUME_IMPORT_NOTES_CHARS}
+                </span>
+              </p>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
               Supported format: <span className="font-medium">.pdf</span> only
@@ -343,7 +389,7 @@ export function ImportResumeUpload() {
               </Button>
               <Button
                 type="button"
-                className="bg-[#21304F] hover:bg-[#1a2840]"
+                className="rounded-full bg-[#0A65CC] shadow-sm hover:bg-[#0952a5]"
                 disabled={!selectedFile || !pageInfo || isParsing || isVerifying}
                 onClick={handleUpload}
               >
@@ -366,6 +412,7 @@ export function ImportResumeUpload() {
             </p>
           ) : null}
         </section>
+        </div>
       </main>
 
       <LandingFooter />

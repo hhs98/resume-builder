@@ -1,10 +1,12 @@
 import { extractText, getDocumentProxy } from "unpdf"
 
-import { generateWithOllama } from "@/lib/ollama"
+import { generateWithAi } from "@/lib/ai"
 import {
   EMPTY_RESUME_DRAFT,
+  MAX_EDUCATION_ENTRIES,
   mergeResumeDraft,
   type EducationAward,
+  type EducationItem,
   type ResumeDraft,
   type ResumeLanguage,
   type ResumeReference,
@@ -22,6 +24,7 @@ export const MAX_RESUME_PDF_BYTES = 5 * 1024 * 1024
 export const MAX_RESUME_PDF_SIZE_MB = 5
 export const MAX_RESUME_PDF_PAGES = 5
 export const MAX_RESUME_TEXT_CHARS = 14_000
+export const MAX_RESUME_IMPORT_NOTES_CHARS = 2_000
 
 export type ResumePdfPageInfo = {
   totalPages: number
@@ -100,7 +103,7 @@ type ParsedResumePayload = {
   contact?: Record<string, unknown>
   summary?: unknown
   workHistory?: unknown[]
-  education?: Record<string, unknown>
+  education?: unknown
   skills?: unknown[]
   languages?: unknown[]
   references?: unknown[]
@@ -162,8 +165,18 @@ export async function extractTextFromPdf(
   }
 }
 
-export function buildParseResumePrompt(resumeText: string): string {
+export function buildParseResumePrompt(
+  resumeText: string,
+  userNotes = ""
+): string {
   const clipped = resumeText.slice(0, MAX_RESUME_TEXT_CHARS)
+  const notes = userNotes.trim().slice(0, MAX_RESUME_IMPORT_NOTES_CHARS)
+  const notesSection = notes
+    ? `
+
+Additional instructions from the user (use alongside the resume text; do not ignore resume facts):
+${notes}`
+    : ""
 
   return `You are a resume parser. Extract structured data from the resume text below.
 
@@ -173,9 +186,12 @@ Return ONLY valid JSON (no markdown, no commentary) matching this shape:
     "givenName": "",
     "familyName": "",
     "profession": "",
+    "currentAddress": "",
     "city": "",
     "postalCode": "",
     "division": "",
+    "dateOfBirth": "YYYY-MM-DD or empty",
+    "gender": "male|female|other|prefer-not-to-say or empty",
     "phone": "",
     "email": ""
   },
@@ -194,19 +210,21 @@ Return ONLY valid JSON (no markdown, no commentary) matching this shape:
       "responsibilities": "bullet points joined with newline, each starting with •"
     }
   ],
-  "education": {
-    "educationLevel": "post-secondary-or-high-school|technical-vocational|related-courses|certificates-or-diplomas|associates|bachelors|masters-or-specialized|doctoral-or-jd",
-    "institution": "",
-    "institutionLocation": "",
-    "degree": "high-school-diploma|certificate|associate|bachelor|master|doctorate|professional|other",
-    "fieldOfStudy": "",
-    "graduationMonth": "01-12 or empty",
-    "graduationYear": "YYYY or empty",
-    "description": "",
-    "projectUrl": "",
-    "gpa": "",
-    "awards": [{ "title": "", "issuer": "", "year": "" }]
-  },
+  "education": [
+    {
+      "educationLevel": "post-secondary-or-high-school|technical-vocational|related-courses|certificates-or-diplomas|associates|bachelors|masters-or-specialized|doctoral-or-jd",
+      "institution": "",
+      "institutionLocation": "",
+      "degree": "high-school-diploma|certificate|associate|bachelor|master|doctorate|professional|other",
+      "fieldOfStudy": "",
+      "graduationMonth": "01-12 or empty",
+      "graduationYear": "YYYY or empty",
+      "description": "",
+      "projectUrl": "",
+      "gpa": "",
+      "awards": [{ "title": "", "issuer": "", "year": "" }]
+    }
+  ],
   "skills": [{ "name": "" }],
   "languages": [{ "name": "", "rating": 1 }],
   "references": [
@@ -222,14 +240,17 @@ Return ONLY valid JSON (no markdown, no commentary) matching this shape:
 
 Rules:
 - Use empty strings for missing text fields, empty arrays when a section is absent
-- Do not invent information that is not in the resume
-- Pick the most recent or highest education for the education object
+- Do not invent information that is not in the resume or user instructions
+- When the user provides extra context, use it to clarify ambiguous fields, target role, or details missing from the PDF
+- Include up to ${MAX_EDUCATION_ENTRIES} education entries, most recent first
 - language rating: 1=Beginner, 2=Intermediate, 3=Fluent, 4=Native
 - If end date is Present/Current, set currentJob true and leave endMonth/endYear empty
 - division is state/province/region when available
+- dateOfBirth must be YYYY-MM-DD when present
+- gender must be one of male, female, other, prefer-not-to-say when present
 
 Resume text:
-${clipped}`
+${clipped}${notesSection}`
 }
 
 export function extractJsonFromAiResponse(text: string): unknown {
@@ -350,13 +371,30 @@ function normalizeContact(
       ? (value as Record<string, unknown>)
       : {}
 
+  const genderRaw = asString(contact.gender).toLowerCase()
+  const gender =
+    genderRaw === "male" ||
+    genderRaw === "female" ||
+    genderRaw === "other" ||
+    genderRaw === "prefer-not-to-say"
+      ? genderRaw
+      : ""
+
+  const dateOfBirthRaw = asString(contact.dateOfBirth)
+  const dateOfBirth = /^\d{4}-\d{2}-\d{2}$/.test(dateOfBirthRaw)
+    ? dateOfBirthRaw
+    : ""
+
   return {
     givenName: asString(contact.givenName),
     familyName: asString(contact.familyName),
     profession: asString(contact.profession),
+    currentAddress: asString(contact.currentAddress),
     city: asString(contact.city),
     postalCode: asString(contact.postalCode),
     division: asString(contact.division),
+    dateOfBirth,
+    gender,
     phone: asString(contact.phone),
     email: asString(contact.email),
     photoDataUrl: sanitizePhotoDataUrl(
@@ -426,7 +464,7 @@ function normalizeAwards(value: unknown): EducationAward[] {
     .filter((award) => award.title || award.issuer || award.year)
 }
 
-function normalizeEducation(value: unknown): ResumeDraft["education"] {
+function normalizeEducationItem(value: unknown): EducationItem {
   const education =
     value && typeof value === "object"
       ? (value as Record<string, unknown>)
@@ -445,6 +483,7 @@ function normalizeEducation(value: unknown): ResumeDraft["education"] {
   )
 
   return {
+    id: generateId(),
     educationLevel,
     institution: asString(education.institution),
     institutionLocation: asString(education.institutionLocation),
@@ -457,6 +496,51 @@ function normalizeEducation(value: unknown): ResumeDraft["education"] {
     gpa: asString(education.gpa),
     awards: normalizeAwards(education.awards),
   }
+}
+
+function normalizeEducation(value: unknown): EducationItem[] {
+  const rawItems = Array.isArray(value)
+    ? value
+    : value && typeof value === "object"
+      ? [value]
+      : []
+
+  const items = rawItems
+    .slice(0, MAX_EDUCATION_ENTRIES)
+    .map(normalizeEducationItem)
+    .filter(
+      (item) =>
+        item.educationLevel ||
+        item.institution ||
+        item.institutionLocation ||
+        item.degree ||
+        item.fieldOfStudy ||
+        item.graduationMonth ||
+        item.graduationYear ||
+        item.description ||
+        item.projectUrl ||
+        item.gpa ||
+        item.awards.length > 0
+    )
+
+  return items.length > 0
+    ? items
+    : [
+        {
+          id: generateId(),
+          educationLevel: "",
+          institution: "",
+          institutionLocation: "",
+          degree: "",
+          fieldOfStudy: "",
+          graduationMonth: "",
+          graduationYear: "",
+          description: "",
+          projectUrl: "",
+          gpa: "",
+          awards: [],
+        },
+      ]
 }
 
 function normalizeSkills(value: unknown): ResumeSkill[] {
@@ -566,7 +650,8 @@ export function normalizeParsedResume(raw: unknown): ResumeDraft {
 }
 
 export async function parseResumePdf(
-  buffer: ArrayBuffer
+  buffer: ArrayBuffer,
+  userNotes = ""
 ): Promise<ParseResumePdfResult> {
   const { text, pages } = await extractTextFromPdf(buffer)
 
@@ -576,8 +661,8 @@ export async function parseResumePdf(
     )
   }
 
-  const prompt = buildParseResumePrompt(text)
-  const generated = await generateWithOllama(prompt)
+  const prompt = buildParseResumePrompt(text, userNotes)
+  const generated = await generateWithAi(prompt)
   const parsed = extractJsonFromAiResponse(generated)
 
   return {

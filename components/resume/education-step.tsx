@@ -5,15 +5,21 @@ import {
   Building2,
   FileText,
   GraduationCap,
-  Lightbulb,
   Link2,
   MapPin,
   Plus,
+  Trash2,
   Trophy,
   X,
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
+import {
+  BuilderFormCard,
+  BuilderStepHeader,
+  BuilderStepPage,
+  BuilderTipsButton,
+} from "@/components/resume/builder-step-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -25,8 +31,19 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
-import type { EducationAward } from "@/lib/resume-draft"
-import { hasEducationAwardContent } from "@/lib/resume-draft"
+import {
+  createEmptyEducationItem,
+  hasEducationAwardContent,
+  MAX_EDUCATION_ENTRIES,
+  normalizeEducationList,
+  type EducationAward,
+  type EducationItem,
+} from "@/lib/resume-draft"
+import {
+  builderAddButtonClassName,
+  builderFieldClassName,
+  builderSelectClassName,
+} from "@/lib/builder-styles"
 import { MONTHS } from "@/lib/resume-form-constants"
 import { cn, generateId } from "@/lib/utils"
 
@@ -84,11 +101,8 @@ const GRADUATION_YEARS = (() => {
   return list
 })()
 
-const fieldClassName =
-  "h-12 rounded-xl border border-border/70 bg-white px-4 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20"
-
-const selectClassName =
-  "h-12 w-full rounded-xl border border-border/70 bg-white px-4 text-sm shadow-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20"
+const fieldClassName = builderFieldClassName
+const selectClassName = builderSelectClassName
 
 const ADDITIONAL_DETAIL_TILES = [
   { key: "description" as const, label: "Description", icon: FileText },
@@ -109,17 +123,12 @@ function newAward(): EducationAward {
   }
 }
 
-function getInitialOpenSections(education: {
-  description: string
-  projectUrl: string
-  gpa: string
-  awards: EducationAward[]
-}): DetailSection[] {
+function getInitialOpenSections(education: EducationItem): DetailSection[] {
   const open: DetailSection[] = []
-  if (education.description.trim()) open.push("description")
-  if (education.awards.some(hasEducationAwardContent)) open.push("awards")
-  if (education.projectUrl.trim()) open.push("projects")
-  if (education.gpa.trim()) open.push("gpa")
+  if (education.description?.trim()) open.push("description")
+  if (education.awards?.some(hasEducationAwardContent)) open.push("awards")
+  if (education.projectUrl?.trim()) open.push("projects")
+  if (education.gpa?.trim()) open.push("gpa")
   return open
 }
 
@@ -145,55 +154,112 @@ function FieldLabel({
 
 export function EducationStep() {
   const { draft, patchDraft } = useResumeDraft()
-  const education = draft.education
-  const educationLevel = education.educationLevel || undefined
-  const [openSections, setOpenSections] = useState<DetailSection[]>(() =>
-    getInitialOpenSections(education)
+  const educationList = normalizeEducationList(draft.education)
+
+  const [openSectionsById, setOpenSectionsById] = useState<
+    Record<string, DetailSection[]>
+  >(() =>
+    Object.fromEntries(
+      educationList.map((item) => [item.id, getInitialOpenSections(item)])
+    )
   )
 
-  function updateEducation(patch: Partial<typeof education>) {
-    patchDraft({ education: { ...education, ...patch } })
+  function updateEducation(index: number, patch: Partial<EducationItem>) {
+    const updated = [...educationList]
+    updated[index] = { ...updated[index], ...patch }
+    patchDraft({ education: updated })
   }
 
-  function isSectionOpen(section: DetailSection) {
-    return openSections.includes(section)
+  function addEducation() {
+    if (educationList.length >= MAX_EDUCATION_ENTRIES) return
+    const next = createEmptyEducationItem()
+    setOpenSectionsById((current) => ({ ...current, [next.id]: [] }))
+    patchDraft({ education: [...educationList, next] })
   }
 
-  function toggleSection(section: DetailSection) {
-    setOpenSections((current) => {
-      const isOpen = current.includes(section)
-      if (isOpen) {
-        return current.filter((item) => item !== section)
-      }
-
-      if (section === "awards" && education.awards.length === 0) {
-        updateEducation({ awards: [newAward()] })
-      }
-
-      return [...current, section]
+  function removeEducation(index: number) {
+    const removed = educationList[index]
+    const updated = educationList.filter((_, i) => i !== index)
+    if (removed) {
+      setOpenSectionsById((current) => {
+        const next = { ...current }
+        delete next[removed.id]
+        return next
+      })
+    }
+    patchDraft({
+      education:
+        updated.length > 0 ? updated : [createEmptyEducationItem()],
     })
   }
 
-  function updateAward(id: string, patch: Partial<EducationAward>) {
-    updateEducation({
+  function getOpenSections(educationId: string): DetailSection[] {
+    return openSectionsById[educationId] ?? []
+  }
+
+  function isSectionOpen(educationId: string, section: DetailSection) {
+    return getOpenSections(educationId).includes(section)
+  }
+
+  function toggleSection(
+    index: number,
+    education: EducationItem,
+    section: DetailSection
+  ) {
+    setOpenSectionsById((current) => {
+      const open = current[education.id] ?? []
+      const isOpen = open.includes(section)
+
+      if (isOpen) {
+        return {
+          ...current,
+          [education.id]: open.filter((item) => item !== section),
+        }
+      }
+
+      if (section === "awards" && education.awards.length === 0) {
+        updateEducation(index, { awards: [newAward()] })
+      }
+
+      return {
+        ...current,
+        [education.id]: [...open, section],
+      }
+    })
+  }
+
+  function updateAward(
+    index: number,
+    education: EducationItem,
+    awardId: string,
+    patch: Partial<EducationAward>
+  ) {
+    updateEducation(index, {
       awards: education.awards.map((award) =>
-        award.id === id ? { ...award, ...patch } : award
+        award.id === awardId ? { ...award, ...patch } : award
       ),
     })
   }
 
-  function addAward() {
-    updateEducation({ awards: [...education.awards, newAward()] })
+  function addAward(index: number, education: EducationItem) {
+    updateEducation(index, { awards: [...education.awards, newAward()] })
   }
 
-  function removeAward(id: string) {
-    const nextAwards = education.awards.filter((award) => award.id !== id)
-    updateEducation({
+  function removeAward(
+    index: number,
+    education: EducationItem,
+    awardId: string
+  ) {
+    const nextAwards = education.awards.filter((award) => award.id !== awardId)
+    updateEducation(index, {
       awards: nextAwards.length > 0 ? nextAwards : [newAward()],
     })
   }
 
-  function sectionHasContent(section: DetailSection) {
+  function sectionHasContent(
+    education: EducationItem,
+    section: DetailSection
+  ) {
     switch (section) {
       case "description":
         return education.description.trim().length > 0
@@ -206,21 +272,24 @@ export function EducationStep() {
     }
   }
 
-  function handleEducationLevelChange(value: string) {
+  function handleEducationLevelChange(index: number, value: string) {
+    const education = educationList[index]
+    if (!education) return
+
     if (education.educationLevel !== value) {
-      updateEducation({
+      updateEducation(index, {
         educationLevel: value,
         degree: "",
         graduationMonth: "",
         graduationYear: "",
       })
     } else {
-      updateEducation({ educationLevel: value })
+      updateEducation(index, { educationLevel: value })
     }
   }
 
-  function handleResetEducationLevel() {
-    updateEducation({
+  function handleResetEducationLevel(index: number) {
+    updateEducation(index, {
       educationLevel: "",
       degree: "",
       graduationMonth: "",
@@ -228,450 +297,539 @@ export function EducationStep() {
     })
   }
 
-  const selectedLevelLabel = EDUCATION_LEVELS.find(
-    (level) => level.value === educationLevel
-  )?.label
+  const canAddMore = educationList.length < MAX_EDUCATION_ENTRIES
+  const showEntryForms = educationList.some((item) => item.educationLevel)
+  const onlyEmptyFirst =
+    educationList.length === 1 && !educationList[0]?.educationLevel
 
   return (
-    <div className="min-h-full bg-[#f8f9fb]">
-      <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8 sm:py-10">
-        {!educationLevel ? (
-          <>
-            <header className="mx-auto max-w-2xl space-y-2 text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
-                What is your highest level of education?
-              </h1>
-              <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-                Choose the most recent or highest degree you have completed.
-              </p>
-            </header>
+    <BuilderStepPage>
+      {onlyEmptyFirst ? (
+        <>
+          <BuilderStepHeader
+            title="What is your highest level of education?"
+            description="Choose the most recent or highest degree you have completed. You can add up to 3 education entries."
+            centered
+          />
 
-            <fieldset className="mx-auto mt-8 max-w-2xl min-w-0 border-0 p-0">
-              <legend className="sr-only">Highest level of education</legend>
-              <ul className="space-y-3">
-                {EDUCATION_LEVELS.map((level) => {
-                  const selected = educationLevel === level.value
-
-                  return (
-                    <li key={level.value}>
-                      <button
-                        type="button"
-                        onClick={() => handleEducationLevelChange(level.value)}
-                        className={cn(
-                          "flex w-full items-center justify-between gap-4 rounded-xl border px-5 py-4 text-left transition-all",
-                          selected
-                            ? "border-blue-500 bg-blue-50 font-semibold text-[#1f2937] shadow-sm ring-1 ring-blue-500/20"
-                            : "border-border/70 bg-white text-foreground hover:border-blue-200 hover:bg-white"
-                        )}
-                        aria-pressed={selected}
-                      >
-                        <span className="text-sm leading-snug sm:text-base">
-                          {level.label}
-                        </span>
-                        <span
-                          className={cn(
-                            "flex size-5 shrink-0 items-center justify-center rounded-full border-2",
-                            selected
-                              ? "border-blue-600"
-                              : "border-muted-foreground/35"
-                          )}
-                          aria-hidden
-                        >
-                          {selected ? (
-                            <span className="size-2.5 rounded-full bg-blue-600" />
-                          ) : null}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </fieldset>
-          </>
-        ) : (
-          <>
-            <div className="flex items-start justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 gap-1.5 rounded-full border-blue-200 bg-white px-4 text-blue-600 shadow-none hover:bg-blue-50"
-              >
-                <Lightbulb className="size-4" aria-hidden />
-                Tips
-              </Button>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-[#f3f4f6] px-4 py-3 sm:px-5">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-                  <GraduationCap className="size-4" aria-hidden />
-                </span>
-                <p className="truncate text-sm font-medium text-foreground sm:text-base">
-                  {selectedLevelLabel}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleResetEducationLevel}
-                className="shrink-0 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
-              >
-                Change level
-              </button>
-            </div>
-
-            <header className="mt-8 space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
-                Tell us about your education
-              </h1>
-              <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-                Enter your education experience so far, even if you are
-                currently a student or didn&apos;t graduate.
-              </p>
-            </header>
-
-            <form className="mt-8 space-y-5" noValidate>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <FieldLabel required>Institution</FieldLabel>
-                  <div className="relative">
-                    <Building2
-                      className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <Input
-                      id="institution"
-                      placeholder="e.g. Stanford University"
-                      autoComplete="organization"
-                      value={education.institution}
-                      onChange={(e) =>
-                        updateEducation({ institution: e.target.value })
-                      }
-                      className={cn(fieldClassName, "pl-10")}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <FieldLabel>Institution Location</FieldLabel>
-                  <div className="relative">
-                    <MapPin
-                      className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <Input
-                      id="institutionLocation"
-                      placeholder="e.g. California, USA"
-                      autoComplete="address-level2"
-                      value={education.institutionLocation}
-                      onChange={(e) =>
-                        updateEducation({
-                          institutionLocation: e.target.value,
-                        })
-                      }
-                      className={cn(fieldClassName, "pl-10")}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <FieldLabel>Degree</FieldLabel>
-                <Select
-                  value={education.degree || undefined}
-                  onValueChange={(v) => updateEducation({ degree: v })}
-                >
-                  <SelectTrigger id="degree" className={selectClassName}>
-                    <SelectValue placeholder="Select your degree" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEGREE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <input type="hidden" name="degree" value={education.degree} />
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <FieldLabel>Field of Study</FieldLabel>
-                  <Input
-                    id="fieldOfStudy"
-                    placeholder="e.g. Computer Science"
-                    autoComplete="off"
-                    value={education.fieldOfStudy}
-                    onChange={(e) =>
-                      updateEducation({ fieldOfStudy: e.target.value })
-                    }
-                    className={fieldClassName}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Graduation Date</FieldLabel>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select
-                      value={education.graduationMonth || undefined}
-                      onValueChange={(v) =>
-                        updateEducation({ graduationMonth: v })
-                      }
-                    >
-                      <SelectTrigger
-                        id="graduationMonth"
-                        className={selectClassName}
-                        aria-label="Graduation month"
-                      >
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>
-                            {m.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={education.graduationYear || undefined}
-                      onValueChange={(v) =>
-                        updateEducation({ graduationYear: v })
-                      }
-                    >
-                      <SelectTrigger
-                        id="graduationYear"
-                        className={selectClassName}
-                        aria-label="Graduation year"
-                      >
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GRADUATION_YEARS.map((y) => (
-                          <SelectItem key={y} value={String(y)}>
-                            {y}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <input
-                    type="hidden"
-                    name="graduationMonth"
-                    value={education.graduationMonth}
-                  />
-                  <input
-                    type="hidden"
-                    name="graduationYear"
-                    value={education.graduationYear}
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border/60 bg-white p-5 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-base font-semibold text-foreground">
-                    Additional Details
-                  </h2>
+          <fieldset className="mx-auto mt-8 max-w-2xl min-w-0 border-0 p-0">
+            <legend className="sr-only">Highest level of education</legend>
+            <ul className="space-y-3">
+              {EDUCATION_LEVELS.map((level) => (
+                <li key={level.value}>
                   <button
                     type="button"
-                    onClick={() => toggleSection("gpa")}
-                    aria-expanded={isSectionOpen("gpa")}
+                    onClick={() =>
+                      handleEducationLevelChange(0, level.value)
+                    }
                     className={cn(
-                      "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
-                      isSectionOpen("gpa") || sectionHasContent("gpa")
-                        ? "text-blue-700"
-                        : "text-blue-600 hover:text-blue-700"
+                      "flex w-full items-center justify-between gap-4 rounded-xl border px-5 py-4 text-left transition-all",
+                      "border-border/70 bg-white text-foreground hover:border-blue-200 hover:bg-white"
                     )}
+                    aria-pressed={false}
                   >
-                    <Plus className="size-4" aria-hidden />
-                    {isSectionOpen("gpa") ? "Hide GPA or Honours" : "Add GPA or Honours"}
+                    <span className="text-sm leading-snug sm:text-base">
+                      {level.label}
+                    </span>
+                    <span
+                      className="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/35"
+                      aria-hidden
+                    />
                   </button>
-                </div>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        </>
+      ) : (
+        <>
+          <div className="flex items-start justify-end">
+            <BuilderTipsButton />
+          </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {ADDITIONAL_DETAIL_TILES.map(({ key, label, icon: Icon }) => {
-                    const open = isSectionOpen(key)
-                    const hasContent = sectionHasContent(key)
+          <BuilderStepHeader
+            title="Tell us about your education"
+            description="Enter your education experience so far, even if you are currently a student or didn&apos;t graduate. You can add up to 3 entries."
+          />
 
-                    return (
-                      <button
-                        key={key}
+          <div className="mt-8 space-y-6">
+            {educationList.map((education, index) => {
+              const educationLevel = education.educationLevel || undefined
+              const selectedLevelLabel = EDUCATION_LEVELS.find(
+                (level) => level.value === educationLevel
+              )?.label
+
+              return (
+                <BuilderFormCard key={education.id}>
+                  <div className="mb-4 flex items-center justify-between gap-3 pl-2">
+                    <span className="rounded-full bg-violet-100 px-3 py-1 text-[0.65rem] font-semibold tracking-[0.12em] text-violet-700 uppercase">
+                      Education {index + 1}
+                    </span>
+                    {educationList.length > 1 ? (
+                      <Button
                         type="button"
-                        onClick={() => toggleSection(key)}
-                        aria-expanded={open}
-                        className={cn(
-                          "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-sm font-medium transition-colors",
-                          open || hasContent
-                            ? "border-blue-400 bg-blue-50/60 text-blue-700"
-                            : "border-border/80 bg-[#f8f9fb]/60 text-muted-foreground hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700"
-                        )}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => removeEducation(index)}
+                        aria-label={`Remove education ${index + 1}`}
                       >
-                        <Icon
-                          className="size-5"
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {isSectionOpen("gpa") ? (
-                  <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
-                    <FieldLabel>GPA or Honours</FieldLabel>
-                    <Input
-                      id="educationGpa"
-                      placeholder="e.g. 3.8/4.0 or First Class Honours"
-                      value={education.gpa}
-                      onChange={(e) => updateEducation({ gpa: e.target.value })}
-                      className={fieldClassName}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Include your GPA, class rank, or honours if they strengthen
-                      your application.
-                    </p>
+                        <Trash2 className="size-3.5" aria-hidden />
+                        <span className="text-xs font-medium">Remove</span>
+                      </Button>
+                    ) : null}
                   </div>
-                ) : null}
 
-                {isSectionOpen("description") ? (
-                  <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
-                    <FieldLabel>Description</FieldLabel>
-                    <Textarea
-                      id="educationDescription"
-                      placeholder="Describe coursework, achievements, or activities relevant to your education..."
-                      className="min-h-32 resize-y rounded-xl border border-border/70 bg-white px-4 py-3 text-sm shadow-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20"
-                      value={education.description}
-                      onChange={(e) =>
-                        updateEducation({ description: e.target.value })
-                      }
-                    />
-                  </div>
-                ) : null}
-
-                {isSectionOpen("awards") ? (
-                  <div className="mt-4 space-y-4 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <FieldLabel>Awards &amp; Honors</FieldLabel>
-                      <button
-                        type="button"
-                        onClick={addAward}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
-                      >
-                        <Plus className="size-4" aria-hidden />
-                        Add award
-                      </button>
+                  {!educationLevel ? (
+                    <div className="space-y-3 pl-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Select education level
+                      </p>
+                      <ul className="space-y-2">
+                        {EDUCATION_LEVELS.map((level) => (
+                          <li key={level.value}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEducationLevelChange(index, level.value)
+                              }
+                              className="flex w-full items-center justify-between gap-4 rounded-xl border border-border/70 bg-white px-4 py-3 text-left text-sm transition-all hover:border-blue-200 hover:bg-blue-50/40"
+                            >
+                              {level.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-
-                    <div className="space-y-4">
-                      {education.awards.map((award, index) => (
-                        <div
-                          key={award.id}
-                          className="space-y-3 rounded-xl border border-border/60 bg-white p-4"
+                  ) : (
+                    <div className="space-y-5 pl-2">
+                      <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-[#f3f4f6] px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                            <GraduationCap className="size-4" aria-hidden />
+                          </span>
+                          <p className="truncate text-sm font-medium text-foreground sm:text-base">
+                            {selectedLevelLabel}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleResetEducationLevel(index)}
+                          className="shrink-0 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-medium text-foreground">
-                              Award {index + 1}
-                            </p>
-                            {education.awards.length > 1 ? (
-                              <button
-                                type="button"
-                                onClick={() => removeAward(award.id)}
-                                className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                aria-label={`Remove award ${index + 1}`}
-                              >
-                                <X className="size-4" aria-hidden />
-                              </button>
-                            ) : null}
+                          Change level
+                        </button>
+                      </div>
+
+                      <form className="space-y-5" noValidate>
+                        <div className="grid gap-5 sm:grid-cols-2">
+                          <div>
+                            <FieldLabel required>Institution</FieldLabel>
+                            <div className="relative">
+                              <Building2
+                                className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
+                                aria-hidden
+                              />
+                              <Input
+                                id={`institution-${education.id}`}
+                                placeholder="e.g. Stanford University"
+                                autoComplete="organization"
+                                value={education.institution}
+                                onChange={(e) =>
+                                  updateEducation(index, {
+                                    institution: e.target.value,
+                                  })
+                                }
+                                className={cn(fieldClassName, "pl-10")}
+                              />
+                            </div>
                           </div>
 
                           <div>
-                            <FieldLabel required>Award title</FieldLabel>
+                            <FieldLabel>Institution Location</FieldLabel>
+                            <div className="relative">
+                              <MapPin
+                                className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
+                                aria-hidden
+                              />
+                              <Input
+                                id={`institutionLocation-${education.id}`}
+                                placeholder="e.g. California, USA"
+                                autoComplete="address-level2"
+                                value={education.institutionLocation}
+                                onChange={(e) =>
+                                  updateEducation(index, {
+                                    institutionLocation: e.target.value,
+                                  })
+                                }
+                                className={cn(fieldClassName, "pl-10")}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <FieldLabel>Degree</FieldLabel>
+                          <Select
+                            value={education.degree || undefined}
+                            onValueChange={(v) =>
+                              updateEducation(index, { degree: v })
+                            }
+                          >
+                            <SelectTrigger
+                              id={`degree-${education.id}`}
+                              className={selectClassName}
+                            >
+                              <SelectValue placeholder="Select your degree" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DEGREE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid gap-5 sm:grid-cols-2">
+                          <div>
+                            <FieldLabel>Field of Study</FieldLabel>
                             <Input
-                              id={`award-title-${award.id}`}
-                              placeholder="e.g. Dean's List"
-                              value={award.title}
+                              id={`fieldOfStudy-${education.id}`}
+                              placeholder="e.g. Computer Science"
+                              autoComplete="off"
+                              value={education.fieldOfStudy}
                               onChange={(e) =>
-                                updateAward(award.id, { title: e.target.value })
+                                updateEducation(index, {
+                                  fieldOfStudy: e.target.value,
+                                })
                               }
                               className={fieldClassName}
                             />
                           </div>
 
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <FieldLabel>Issuer</FieldLabel>
+                          <div>
+                            <FieldLabel>Graduation Date</FieldLabel>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Select
+                                value={education.graduationMonth || undefined}
+                                onValueChange={(v) =>
+                                  updateEducation(index, {
+                                    graduationMonth: v,
+                                  })
+                                }
+                              >
+                                <SelectTrigger
+                                  id={`graduationMonth-${education.id}`}
+                                  className={selectClassName}
+                                  aria-label="Graduation month"
+                                >
+                                  <SelectValue placeholder="Month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {MONTHS.map((m) => (
+                                    <SelectItem key={m.value} value={m.value}>
+                                      {m.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Select
+                                value={education.graduationYear || undefined}
+                                onValueChange={(v) =>
+                                  updateEducation(index, {
+                                    graduationYear: v,
+                                  })
+                                }
+                              >
+                                <SelectTrigger
+                                  id={`graduationYear-${education.id}`}
+                                  className={selectClassName}
+                                  aria-label="Graduation year"
+                                >
+                                  <SelectValue placeholder="Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {GRADUATION_YEARS.map((y) => (
+                                    <SelectItem key={y} value={String(y)}>
+                                      {y}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-border/60 bg-white p-5 sm:p-6">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <h2 className="text-base font-semibold text-foreground">
+                              Additional Details
+                            </h2>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleSection(index, education, "gpa")
+                              }
+                              aria-expanded={isSectionOpen(
+                                education.id,
+                                "gpa"
+                              )}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
+                                isSectionOpen(education.id, "gpa") ||
+                                  sectionHasContent(education, "gpa")
+                                  ? "text-blue-700"
+                                  : "text-blue-600 hover:text-blue-700"
+                              )}
+                            >
+                              <Plus className="size-4" aria-hidden />
+                              {isSectionOpen(education.id, "gpa")
+                                ? "Hide GPA or Honours"
+                                : "Add GPA or Honours"}
+                            </button>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                            {ADDITIONAL_DETAIL_TILES.map(
+                              ({ key, label, icon: Icon }) => {
+                                const open = isSectionOpen(education.id, key)
+                                const hasContent = sectionHasContent(
+                                  education,
+                                  key
+                                )
+
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() =>
+                                      toggleSection(index, education, key)
+                                    }
+                                    aria-expanded={open}
+                                    className={cn(
+                                      "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-sm font-medium transition-colors",
+                                      open || hasContent
+                                        ? "border-blue-400 bg-blue-50/60 text-blue-700"
+                                        : "border-border/80 bg-[#f8f9fb]/60 text-muted-foreground hover:border-blue-300 hover:bg-blue-50/40 hover:text-blue-700"
+                                    )}
+                                  >
+                                    <Icon
+                                      className="size-5"
+                                      strokeWidth={1.75}
+                                      aria-hidden
+                                    />
+                                    {label}
+                                  </button>
+                                )
+                              }
+                            )}
+                          </div>
+
+                          {isSectionOpen(education.id, "gpa") ? (
+                            <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                              <FieldLabel>GPA or Honours</FieldLabel>
                               <Input
-                                id={`award-issuer-${award.id}`}
-                                placeholder="e.g. Stanford University"
-                                value={award.issuer}
+                                id={`educationGpa-${education.id}`}
+                                placeholder="e.g. 3.8/4.0 or First Class Honours"
+                                value={education.gpa}
                                 onChange={(e) =>
-                                  updateAward(award.id, {
-                                    issuer: e.target.value,
+                                  updateEducation(index, {
+                                    gpa: e.target.value,
                                   })
                                 }
                                 className={fieldClassName}
                               />
+                              <p className="text-xs text-muted-foreground">
+                                Include your GPA, class rank, or honours if they
+                                strengthen your application.
+                              </p>
                             </div>
-                            <div>
-                              <FieldLabel>Year</FieldLabel>
-                              <Input
-                                id={`award-year-${award.id}`}
-                                placeholder="e.g. 2024"
-                                inputMode="numeric"
-                                value={award.year}
+                          ) : null}
+
+                          {isSectionOpen(education.id, "description") ? (
+                            <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                              <FieldLabel>Description</FieldLabel>
+                              <Textarea
+                                id={`educationDescription-${education.id}`}
+                                placeholder="Describe coursework, achievements, or activities relevant to your education..."
+                                className="min-h-32 resize-y rounded-xl border border-border/70 bg-white px-4 py-3 text-sm shadow-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20"
+                                value={education.description}
                                 onChange={(e) =>
-                                  updateAward(award.id, { year: e.target.value })
+                                  updateEducation(index, {
+                                    description: e.target.value,
+                                  })
                                 }
-                                className={fieldClassName}
                               />
                             </div>
-                          </div>
+                          ) : null}
+
+                          {isSectionOpen(education.id, "awards") ? (
+                            <div className="mt-4 space-y-4 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <FieldLabel>Awards &amp; Honors</FieldLabel>
+                                <button
+                                  type="button"
+                                  onClick={() => addAward(index, education)}
+                                  className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                                >
+                                  <Plus className="size-4" aria-hidden />
+                                  Add award
+                                </button>
+                              </div>
+
+                              <div className="space-y-4">
+                                {education.awards.map((award, awardIndex) => (
+                                  <div
+                                    key={award.id}
+                                    className="space-y-3 rounded-xl border border-border/60 bg-white p-4"
+                                  >
+                                    <div className="flex items-center justify-between gap-3">
+                                      <p className="text-sm font-medium text-foreground">
+                                        Award {awardIndex + 1}
+                                      </p>
+                                      {education.awards.length > 1 ? (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            removeAward(
+                                              index,
+                                              education,
+                                              award.id
+                                            )
+                                          }
+                                          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                          aria-label={`Remove award ${awardIndex + 1}`}
+                                        >
+                                          <X className="size-4" aria-hidden />
+                                        </button>
+                                      ) : null}
+                                    </div>
+
+                                    <div>
+                                      <FieldLabel required>Award title</FieldLabel>
+                                      <Input
+                                        id={`award-title-${award.id}`}
+                                        placeholder="e.g. Dean's List"
+                                        value={award.title}
+                                        onChange={(e) =>
+                                          updateAward(
+                                            index,
+                                            education,
+                                            award.id,
+                                            { title: e.target.value }
+                                          )
+                                        }
+                                        className={fieldClassName}
+                                      />
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <div>
+                                        <FieldLabel>Issuer</FieldLabel>
+                                        <Input
+                                          id={`award-issuer-${award.id}`}
+                                          placeholder="e.g. Stanford University"
+                                          value={award.issuer}
+                                          onChange={(e) =>
+                                            updateAward(
+                                              index,
+                                              education,
+                                              award.id,
+                                              { issuer: e.target.value }
+                                            )
+                                          }
+                                          className={fieldClassName}
+                                        />
+                                      </div>
+                                      <div>
+                                        <FieldLabel>Year</FieldLabel>
+                                        <Input
+                                          id={`award-year-${award.id}`}
+                                          placeholder="e.g. 2024"
+                                          inputMode="numeric"
+                                          value={award.year}
+                                          onChange={(e) =>
+                                            updateAward(
+                                              index,
+                                              education,
+                                              award.id,
+                                              { year: e.target.value }
+                                            )
+                                          }
+                                          className={fieldClassName}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {isSectionOpen(education.id, "projects") ? (
+                            <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
+                              <FieldLabel>Project URL</FieldLabel>
+                              <div className="relative">
+                                <Link2
+                                  className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
+                                  aria-hidden
+                                />
+                                <Input
+                                  id={`educationProjectUrl-${education.id}`}
+                                  type="url"
+                                  placeholder="https://github.com/you/project"
+                                  value={education.projectUrl}
+                                  onChange={(e) =>
+                                    updateEducation(index, {
+                                      projectUrl: e.target.value,
+                                    })
+                                  }
+                                  className={cn(fieldClassName, "pl-10")}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Share a link to a portfolio project, thesis, or
+                                capstone related to your education.
+                              </p>
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
+                      </form>
                     </div>
-                  </div>
-                ) : null}
+                  )}
+                </BuilderFormCard>
+              )
+            })}
 
-                {isSectionOpen("projects") ? (
-                  <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-[#f8f9fb]/80 p-4">
-                    <FieldLabel>Project URL</FieldLabel>
-                    <div className="relative">
-                      <Link2
-                        className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden
-                      />
-                      <Input
-                        id="educationProjectUrl"
-                        type="url"
-                        placeholder="https://github.com/you/project"
-                        value={education.projectUrl}
-                        onChange={(e) =>
-                          updateEducation({ projectUrl: e.target.value })
-                        }
-                        className={cn(fieldClassName, "pl-10")}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Share a link to a portfolio project, thesis, or capstone
-                      related to your education.
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </form>
-          </>
-        )}
+            {showEntryForms && canAddMore ? (
+              <button
+                type="button"
+                onClick={addEducation}
+                className={builderAddButtonClassName}
+              >
+                <Plus className="size-4" aria-hidden />
+                Add Another Education ({educationList.length}/
+                {MAX_EDUCATION_ENTRIES})
+              </button>
+            ) : null}
 
-        <BuilderStepFooter
-          backHref="/new/work-history"
-          nextHref="/new/skills"
-          nextLabel="Next: Skills"
-          nextDisabled={!educationLevel}
-        />
-      </div>
-    </div>
+            {showEntryForms && !canAddMore ? (
+              <p className="text-center text-sm text-muted-foreground">
+                Maximum of {MAX_EDUCATION_ENTRIES} education entries reached.
+              </p>
+            ) : null}
+          </div>
+        </>
+      )}
+
+      <BuilderStepFooter
+        backHref="/new/work-history"
+        nextHref="/new/training"
+        nextLabel="Next: Training"
+        nextDisabled={!educationList.some((item) => item.educationLevel.trim())}
+      />
+    </BuilderStepPage>
   )
 }

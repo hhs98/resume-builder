@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import { parseEducationAwards } from "@/lib/resume-draft"
+import {
+  createEmptyEducationItem,
+  createEmptyTrainingItem,
+  parseEducationAwards,
+} from "@/lib/resume-draft"
 
 export async function GET(
   _req: Request,
@@ -14,6 +18,7 @@ export async function GET(
       where: { id },
       include: {
         education: true,
+        trainings: true,
         workHistory: true,
         skills: true,
         languages: true,
@@ -31,41 +36,46 @@ export async function GET(
         givenName: resume.givenName,
         familyName: resume.familyName,
         profession: resume.profession,
+        currentAddress: resume.currentAddress || "",
         city: resume.city,
         postalCode: resume.postalCode,
         division: resume.division,
+        dateOfBirth: resume.dateOfBirth || "",
+        gender: resume.gender || "",
         phone: resume.phone,
         email: resume.email,
         photoDataUrl: resume.photoDataUrl,
       },
       summary: resume.summary || "",
-      education: resume.education
-        ? {
-            educationLevel: resume.education.educationLevel,
-            institution: resume.education.institution,
-            institutionLocation: resume.education.institutionLocation,
-            degree: resume.education.degree,
-            fieldOfStudy: resume.education.fieldOfStudy,
-            graduationMonth: resume.education.graduationMonth,
-            graduationYear: resume.education.graduationYear,
-            description: resume.education.description || "",
-            projectUrl: resume.education.projectUrl || "",
-            gpa: resume.education.gpa || "",
-            awards: parseEducationAwards(resume.education.awards),
-          }
-        : {
-            educationLevel: "",
-            institution: "",
-            institutionLocation: "",
-            degree: "",
-            fieldOfStudy: "",
-            graduationMonth: "",
-            graduationYear: "",
-            description: "",
-            projectUrl: "",
-            gpa: "",
-            awards: [],
-          },
+      education:
+        resume.education.length > 0
+          ? resume.education.map((education) => ({
+              id: education.id,
+              educationLevel: education.educationLevel,
+              institution: education.institution,
+              institutionLocation: education.institutionLocation,
+              degree: education.degree,
+              fieldOfStudy: education.fieldOfStudy,
+              graduationMonth: education.graduationMonth,
+              graduationYear: education.graduationYear,
+              description: education.description || "",
+              projectUrl: education.projectUrl || "",
+              gpa: education.gpa || "",
+              awards: parseEducationAwards(education.awards),
+            }))
+          : [createEmptyEducationItem()],
+      trainings:
+        resume.trainings.length > 0
+          ? resume.trainings.map((training) => ({
+              id: training.id,
+              courseType: training.courseType,
+              instituteName: training.instituteName,
+              achievementMonth: training.achievementMonth,
+              achievementYear: training.achievementYear,
+              certificateFileName: training.certificateFileName || "",
+              certificatePdfDataUrl: training.certificatePdfDataUrl,
+            }))
+          : [createEmptyTrainingItem()],
       workHistory: resume.workHistory.map((work) => ({
         id: work.id,
         jobTitle: work.jobTitle,

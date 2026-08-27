@@ -1,20 +1,28 @@
 "use client"
 
 import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
+import { ResumeWatermark } from "@/components/resume/resume-watermark"
 import {
+  formatDateOfBirth,
   formatMonthYear,
+  formatTrainingAchievementDate,
   formatWorkDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getGenderLabel,
+  getPreviewEducation,
   getPreviewSkills,
+  getPreviewTrainings,
   getPreviewWorkHistory,
+  getTrainingCourseTypeLabel,
   hasEducationContent,
   hasPreviewContact,
   hasPreviewSkills,
   hasPreviewWorkHistory,
   hasSummaryContent,
+  hasTrainingContent,
   type ResumeDraft,
   type ResumeTemplateId,
 } from "@/lib/resume-draft"
@@ -45,28 +53,28 @@ export function ResumePreview({
 
   const name = getFullName(draft) || "Your name"
   const location = getContactLocation(draft)
-  const contactLine = [draft.contact.email, draft.contact.phone, location]
+  const dob = formatDateOfBirth(draft.contact.dateOfBirth)
+  const genderLabel = draft.contact.gender?.trim()
+    ? getGenderLabel(draft.contact.gender)
+    : ""
+  const contactLine = [
+    draft.contact.email,
+    draft.contact.phone,
+    location,
+    dob ? `DOB: ${dob}` : "",
+    genderLabel ? `Gender: ${genderLabel}` : "",
+  ]
     .map((s) => s.trim())
     .filter(Boolean)
 
   const workHistory = getPreviewWorkHistory(draft)
+  const educationEntries = getPreviewEducation(draft)
+  const trainingEntries = getPreviewTrainings(draft)
   const skills = getPreviewSkills(draft)
-
-  const gradDate = formatMonthYear(
-    draft.education.graduationMonth,
-    draft.education.graduationYear
-  )
-
-  const educationLines = [
-    draft.education.institution,
-    draft.education.fieldOfStudy,
-    draft.education.degree ? getDegreeLabel(draft.education.degree) : "",
-    gradDate,
-    draft.education.institutionLocation,
-  ].filter((s) => s.trim())
 
   const hasWork = hasPreviewWorkHistory(draft)
   const hasEducation = hasEducationContent(draft)
+  const hasTraining = hasTrainingContent(draft)
   const hasSkills = hasPreviewSkills(draft)
   const hasSummary = hasSummaryContent(draft)
   const hasContact = hasPreviewContact(draft)
@@ -110,7 +118,7 @@ export function ResumePreview({
       id={id}
       data-resume-template={resolvedTemplateId}
       className={cn(
-        "resume-preview mx-auto w-full max-w-[210mm] bg-white text-[11px] leading-relaxed text-neutral-900 shadow-sm",
+        "resume-preview relative mx-auto w-full max-w-[210mm] bg-white text-[11px] leading-relaxed text-neutral-900 shadow-sm",
         "min-h-[297mm] p-8 sm:p-10",
         className
       )}
@@ -208,18 +216,68 @@ export function ResumePreview({
 
       {hasEducation ? (
         <PreviewSection title="Education">
-          <div className="space-y-1">
-            {draft.education.educationLevel.trim() ? (
-              <p className="font-semibold text-neutral-900">
-                {getEducationLevelLabel(draft.education.educationLevel)}
-              </p>
-            ) : null}
-            {educationLines.map((line) => (
-              <p key={line} className="text-neutral-700">
-                {line}
-              </p>
-            ))}
-            <EducationAdditionalDetails draft={draft} className="mt-2" />
+          <div className="space-y-4">
+            {educationEntries.map((education) => {
+              const gradDate = formatMonthYear(
+                education.graduationMonth,
+                education.graduationYear
+              )
+              const educationLines = [
+                education.institution,
+                education.fieldOfStudy,
+                education.degree ? getDegreeLabel(education.degree) : "",
+                gradDate,
+                education.institutionLocation,
+              ].filter((s) => s.trim())
+
+              return (
+                <div key={education.id} className="space-y-1">
+                  {education.educationLevel.trim() ? (
+                    <p className="font-semibold text-neutral-900">
+                      {getEducationLevelLabel(education.educationLevel)}
+                    </p>
+                  ) : null}
+                  {educationLines.map((line) => (
+                    <p key={line} className="text-neutral-700">
+                      {line}
+                    </p>
+                  ))}
+                  <EducationAdditionalDetails
+                    education={education}
+                    className="mt-2"
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </PreviewSection>
+      ) : null}
+
+      {hasTraining ? (
+        <PreviewSection title="Training & Courses">
+          <div className="space-y-3">
+            {trainingEntries.map((training) => {
+              const dateLabel = formatTrainingAchievementDate(training)
+              const typeLabel = training.courseType.trim()
+                ? getTrainingCourseTypeLabel(training.courseType)
+                : ""
+
+              return (
+                <div key={training.id} className="space-y-0.5">
+                  {typeLabel ? (
+                    <p className="font-semibold text-neutral-900">{typeLabel}</p>
+                  ) : null}
+                  {training.instituteName.trim() ? (
+                    <p className="text-neutral-700">
+                      {training.instituteName.trim()}
+                    </p>
+                  ) : null}
+                  {dateLabel ? (
+                    <p className="text-neutral-600">{dateLabel}</p>
+                  ) : null}
+                </div>
+              )
+            })}
           </div>
         </PreviewSection>
       ) : null}
@@ -239,11 +297,12 @@ export function ResumePreview({
         </PreviewSection>
       ) : null}
 
-      {!hasSummary && !hasWork && !hasEducation && !hasSkills ? (
+      {!hasSummary && !hasWork && !hasEducation && !hasTraining && !hasSkills ? (
         <p className="py-12 text-center text-sm text-neutral-500">
           Fill in the builder steps to see your resume here.
         </p>
       ) : null}
+      <ResumeWatermark />
     </article>
   )
 }

@@ -1,16 +1,21 @@
 "use client"
 
 import {
-  Lightbulb,
   Plus,
   Trash2,
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
-import { Button } from "@/components/ui/button"
+import {
+  BuilderFormCard,
+  BuilderStepHeader,
+  BuilderStepPage,
+  BuilderTipsButton,
+} from "@/components/resume/builder-step-layout"
 import { Input } from "@/components/ui/input"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
 import { hasReferenceContent } from "@/lib/resume-draft"
+import { builderFieldClassName } from "@/lib/builder-styles"
 import { generateId } from "@/lib/utils"
 
 const EMPTY_REFERENCE = {
@@ -55,7 +60,7 @@ function FloatingField({
         autoComplete={autoComplete}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-12 rounded-xl border border-border/70 bg-white px-4 text-sm shadow-none"
+        className={builderFieldClassName}
       />
     </div>
   )
@@ -100,40 +105,16 @@ export function ReferencesStep() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9fb]">
-      <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <header className="max-w-2xl space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
-              Add your references
-            </h1>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-              Provide details of people who can vouch for your professional
-              work.
-            </p>
-          </header>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 gap-1.5 self-start rounded-full border-blue-200 bg-white px-4 text-blue-600 shadow-none hover:bg-blue-50 sm:self-auto"
-          >
-            <Lightbulb className="size-4" aria-hidden />
-            Tips
-          </Button>
-        </div>
+    <BuilderStepPage>
+      <BuilderStepHeader
+        title="Add your references"
+        description="Provide details of people who can vouch for your professional work."
+        action={<BuilderTipsButton />}
+      />
 
         <div className="mt-8 space-y-5">
           {references.map((ref, index) => (
-            <div
-              key={ref.id}
-              className="relative overflow-hidden rounded-2xl border border-border/60 bg-white p-5 shadow-sm sm:p-6"
-            >
-              <div
-                className="absolute inset-y-0 left-0 w-1 bg-blue-600"
-                aria-hidden
-              />
-
+            <BuilderFormCard key={ref.id} padding="sm">
               <div className="mb-5 flex items-center justify-between gap-3 pl-2">
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-[0.65rem] font-semibold tracking-[0.12em] text-blue-700 uppercase">
                   Reference {index + 1}
@@ -188,13 +169,13 @@ export function ReferencesStep() {
                   onChange={(v) => updateReference(index, { phone: v })}
                 />
               </div>
-            </div>
+            </BuilderFormCard>
           ))}
 
           <button
             type="button"
             onClick={addReference}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/30 px-6 py-4 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-50/60"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#0A65CC]/30 bg-blue-50/40 px-6 py-4 text-sm font-semibold text-[#0A65CC] transition-all hover:border-[#0A65CC]/50 hover:bg-blue-50/70"
           >
             <Plus className="size-4" aria-hidden />
             Add Another Reference
@@ -215,7 +196,6 @@ export function ReferencesStep() {
             </p>
           }
         />
-      </div>
-    </div>
+    </BuilderStepPage>
   )
 }

@@ -6,7 +6,7 @@ import {
   normalizeEnhancedResponsibilities,
   type EnhanceWorkHistoryInput,
 } from "@/lib/enhance-work-history"
-import { generateWithOllama } from "@/lib/ollama"
+import { generateWithAi } from "@/lib/ai"
 import {
   AI_RATE_LIMIT_ERROR,
   checkAiRateLimit,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     const prompt = buildEnhanceWorkHistoryPrompt(body)
-    const generated = await generateWithOllama(prompt)
+    const generated = await generateWithAi(prompt)
 
     return NextResponse.json(
       {
@@ -81,6 +81,7 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     console.error("Failed to enhance work history:", error)
+    console.log(prompt)
 
     return NextResponse.json(
       {

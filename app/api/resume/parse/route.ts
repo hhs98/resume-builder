@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { toUserFacingAiError } from "@/lib/ai-errors"
 import {
   isResumePdfPageLimitMessage,
+  MAX_RESUME_IMPORT_NOTES_CHARS,
   parseResumePdf,
   validateResumePdfUpload,
 } from "@/lib/parse-resume"
@@ -37,13 +38,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
+    const rawNotes = formData.get("description")
+    const userNotes =
+      typeof rawNotes === "string"
+        ? rawNotes.trim().slice(0, MAX_RESUME_IMPORT_NOTES_CHARS)
+        : ""
+
     const buffer = await validation.file.arrayBuffer()
 
     if (!isPdfBuffer(buffer)) {
       return NextResponse.json({ error: PDF_MAGIC_BYTE_ERROR }, { status: 400 })
     }
 
-    const { draft, pages } = await parseResumePdf(buffer)
+    const { draft, pages } = await parseResumePdf(buffer, userNotes)
 
     return NextResponse.json(
       { draft, pages },

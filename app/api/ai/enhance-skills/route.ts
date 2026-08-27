@@ -8,7 +8,7 @@ import {
   normalizeEnhancedSkills,
   type EnhanceSkillsInput,
 } from "@/lib/enhance-skills"
-import { generateWithOllama } from "@/lib/ollama"
+import { generateWithAi } from "@/lib/ai"
 import {
   AI_RATE_LIMIT_ERROR,
   checkAiRateLimit,
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     const prompt = buildEnhanceSkillsPrompt(body)
-    const generated = await generateWithOllama(prompt)
+    const generated = await generateWithAi(prompt)
     const skills = normalizeEnhancedSkills(generated)
 
     if (skills.length === 0) {

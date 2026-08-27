@@ -1,6 +1,5 @@
 import type { WorkHistoryItem } from "@/lib/resume-draft"
 import { formatWorkDates } from "@/lib/resume-draft"
-import { generateWithOllama } from "@/lib/ollama"
 
 export type EnhanceWorkHistoryInput = Pick<
   WorkHistoryItem,

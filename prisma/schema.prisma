@@ -18,9 +18,12 @@ model Resume {
   givenName   String
   familyName  String
   profession  String
+  currentAddress String?
   city        String
   postalCode  String
   division    String
+  dateOfBirth String?
+  gender      String?
   phone       String
   email       String
   photoDataUrl String?
@@ -29,7 +32,8 @@ model Resume {
   
   // Relations
   workHistory WorkHistory[]
-  education   Education?
+  education   Education[]
+  trainings   Training[]
   skills      Skill[]
   languages   Language[]
   references  Reference[]
@@ -54,7 +58,7 @@ model WorkHistory {
 
 model Education {
   id                  String @id @default(cuid())
-  resumeId            String @unique
+  resumeId            String
   resume              Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
   
   educationLevel      String
@@ -68,6 +72,19 @@ model Education {
   projectUrl          String?
   gpa                 String?
   awards              Json    @default("[]")
+}
+
+model Training {
+  id                     String  @id @default(cuid())
+  resumeId               String
+  resume                 Resume  @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  courseType             String
+  instituteName          String
+  achievementMonth       String
+  achievementYear        String
+  certificateFileName    String?
+  certificatePdfDataUrl  String? @db.Text
 }
 
 model Skill {

@@ -1,17 +1,24 @@
 "use client"
 
 import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
+import { ResumeWatermark } from "@/components/resume/resume-watermark"
 import {
+  formatDateOfBirth,
   formatGraduationCompact,
+  formatTrainingAchievementDate,
   formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getGenderLabel,
+  getPreviewEducation,
   getPreviewLanguages,
   getPreviewReferences,
   getPreviewSkills,
+  getPreviewTrainings,
   getPreviewWorkHistory,
+  getTrainingCourseTypeLabel,
   hasEducationContent,
   hasPreviewContact,
   hasPreviewLanguages,
@@ -19,6 +26,7 @@ import {
   hasPreviewSkills,
   hasPreviewWorkHistory,
   hasSummaryContent,
+  hasTrainingContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -45,33 +53,18 @@ export function ClassicRedPreview({
   const colors = getClassicPreviewColors(tone)
   const name = (getFullName(draft) || "Your name").toUpperCase()
   const address = getContactLocation(draft)
-  const gradDate = formatGraduationCompact(draft)
 
   const workHistory = getPreviewWorkHistory(draft)
+  const educationEntries = getPreviewEducation(draft)
+  const trainingEntries = getPreviewTrainings(draft)
   const skills = getPreviewSkills(draft)
   const languages = getPreviewLanguages(draft)
   const references = getPreviewReferences(draft)
 
-  const educationDegreeLine = [
-    draft.education.degree.trim()
-      ? getDegreeLabel(draft.education.degree)
-      : draft.education.fieldOfStudy.trim() ||
-        getEducationLevelLabel(draft.education.educationLevel),
-    gradDate,
-  ]
-    .filter(Boolean)
-    .join(", ")
-
-  const educationOrgLine = [
-    draft.education.institution,
-    draft.education.institutionLocation,
-  ]
-    .filter((s) => s.trim())
-    .join(", ")
-
   const hasContact = hasPreviewContact(draft)
   const hasSummary = hasSummaryContent(draft)
   const hasEducation = hasEducationContent(draft)
+  const hasTraining = hasTrainingContent(draft)
   const hasSkills = hasPreviewSkills(draft)
   const hasWork = hasPreviewWorkHistory(draft)
   const hasReferences = hasPreviewReferences(draft)
@@ -81,6 +74,7 @@ export function ClassicRedPreview({
     !hasContact &&
     !hasSummary &&
     !hasEducation &&
+    !hasTraining &&
     !hasSkills &&
     !hasWork &&
     !hasReferences &&
@@ -91,7 +85,7 @@ export function ClassicRedPreview({
       id={id}
       data-resume-template="classic"
       className={cn(
-        "resume-preview resume-preview--classic mx-auto w-full max-w-[210mm] bg-white font-sans text-[11px] leading-relaxed text-neutral-800 shadow-sm",
+        "resume-preview resume-preview--classic relative mx-auto w-full max-w-[210mm] bg-white font-sans text-[11px] leading-relaxed text-neutral-800 shadow-sm",
         "min-h-[297mm]",
         className
       )}
@@ -140,9 +134,7 @@ export function ClassicRedPreview({
                   <p className="font-bold text-neutral-900">Address</p>
                   <p className="mt-0.5 text-neutral-800">{address}</p>
                 </div>
-              ) : (
-                <span />
-              )}
+              ) : null}
 
               {draft.contact.phone.trim() ? (
                 <div>
@@ -151,9 +143,7 @@ export function ClassicRedPreview({
                     {draft.contact.phone}
                   </p>
                 </div>
-              ) : (
-                <span />
-              )}
+              ) : null}
 
               {draft.contact.email.trim() ? (
                 <div>
@@ -162,9 +152,25 @@ export function ClassicRedPreview({
                     {draft.contact.email}
                   </p>
                 </div>
-              ) : (
-                <span />
-              )}
+              ) : null}
+
+              {formatDateOfBirth(draft.contact.dateOfBirth) ? (
+                <div>
+                  <p className="font-bold text-neutral-900">Date of Birth</p>
+                  <p className="mt-0.5 text-neutral-800">
+                    {formatDateOfBirth(draft.contact.dateOfBirth)}
+                  </p>
+                </div>
+              ) : null}
+
+              {draft.contact.gender?.trim() ? (
+                <div>
+                  <p className="font-bold text-neutral-900">Gender</p>
+                  <p className="mt-0.5 text-neutral-800">
+                    {getGenderLabel(draft.contact.gender)}
+                  </p>
+                </div>
+              ) : null}
             </div>
             <RedDivider colors={colors} />
           </section>
@@ -185,26 +191,84 @@ export function ClassicRedPreview({
         {hasEducation ? (
           <section>
             <SectionHeader title="Education" colors={colors} />
+            <div className="mt-3 space-y-4">
+              {educationEntries.map((education) => {
+                const gradDate = formatGraduationCompact(education)
+                const educationDegreeLine = [
+                  education.degree.trim()
+                    ? getDegreeLabel(education.degree)
+                    : education.fieldOfStudy.trim() ||
+                      getEducationLevelLabel(education.educationLevel),
+                  gradDate,
+                ]
+                  .filter(Boolean)
+                  .join(", ")
+
+                const educationOrgLine = [
+                  education.institution,
+                  education.institutionLocation,
+                ]
+                  .filter((s) => s.trim())
+                  .join(", ")
+
+                return (
+                  <div key={education.id} className="space-y-1">
+                    {educationDegreeLine ? (
+                      <p className="text-[11px] text-neutral-800">
+                        {educationDegreeLine}
+                      </p>
+                    ) : null}
+
+                    {educationOrgLine ? (
+                      <p className="text-[11px] font-bold text-neutral-900">
+                        {educationOrgLine}
+                      </p>
+                    ) : null}
+
+                    <EducationAdditionalDetails
+                      education={education}
+                      className="mt-2"
+                      textClassName="text-[11px] text-neutral-800"
+                      linkClassName="text-[11px] underline underline-offset-2"
+                      linkStyle={{ color: colors.link }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <RedDivider colors={colors} />
+          </section>
+        ) : null}
+
+        {/* TRAINING */}
+        {hasTraining ? (
+          <section>
+            <SectionHeader title="Training & Courses" colors={colors} />
             <div className="mt-3 space-y-3">
-              {educationDegreeLine ? (
-                <p className="text-[11px] text-neutral-800">
-                  {educationDegreeLine}
-                </p>
-              ) : null}
+              {trainingEntries.map((training) => {
+                const dateLabel = formatTrainingAchievementDate(training)
+                const typeLabel = training.courseType.trim()
+                  ? getTrainingCourseTypeLabel(training.courseType)
+                  : ""
 
-              {educationOrgLine ? (
-                <p className="text-[11px] font-bold text-neutral-900">
-                  {educationOrgLine}
-                </p>
-              ) : null}
-
-              <EducationAdditionalDetails
-                draft={draft}
-                className="mt-2"
-                textClassName="text-[11px] text-neutral-800"
-                linkClassName="text-[11px] underline underline-offset-2"
-                linkStyle={{ color: colors.link }}
-              />
+                return (
+                  <div key={training.id} className="space-y-0.5">
+                    {typeLabel ? (
+                      <p className="text-[11px] font-bold text-neutral-900">
+                        {typeLabel}
+                      </p>
+                    ) : null}
+                    {training.instituteName.trim() ? (
+                      <p className="text-[11px] text-neutral-800">
+                        {training.instituteName.trim()}
+                      </p>
+                    ) : null}
+                    {dateLabel ? (
+                      <p className="text-[10px] text-neutral-600">{dateLabel}</p>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
             <RedDivider colors={colors} />
           </section>
@@ -338,6 +402,7 @@ export function ClassicRedPreview({
           </p>
         ) : null}
       </div>
+      <ResumeWatermark />
     </article>
   )
 }

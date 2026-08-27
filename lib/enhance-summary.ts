@@ -1,4 +1,4 @@
-export const SUMMARY_CHAR_LIMIT = 500
+export const SUMMARY_CHAR_LIMIT = 1000
 
 export type EnhanceSummaryInput = {
   input: string

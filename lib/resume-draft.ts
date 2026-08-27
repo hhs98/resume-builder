@@ -35,6 +35,21 @@ export type EducationAward = {
   year: string
 }
 
+export type EducationItem = {
+  id: string
+  educationLevel: string
+  institution: string
+  institutionLocation: string
+  degree: string
+  fieldOfStudy: string
+  graduationMonth: string
+  graduationYear: string
+  description: string
+  projectUrl: string
+  gpa: string
+  awards: EducationAward[]
+}
+
 export type WorkHistoryItem = {
   id: string
   jobTitle: string
@@ -49,6 +64,21 @@ export type WorkHistoryItem = {
   responsibilities: string
 }
 
+export const MAX_EDUCATION_ENTRIES = 3
+export const MAX_TRAINING_ENTRIES = 3
+export const MAX_TRAINING_PDF_BYTES = 5 * 1024 * 1024
+export const MAX_TRAINING_PDF_SIZE_MB = 5
+
+export type TrainingItem = {
+  id: string
+  courseType: string
+  instituteName: string
+  achievementMonth: string
+  achievementYear: string
+  certificateFileName: string
+  certificatePdfDataUrl: string | null
+}
+
 export type ResumeDraft = {
   id: string
   templateId: ResumeTemplateId
@@ -56,27 +86,19 @@ export type ResumeDraft = {
     givenName: string
     familyName: string
     profession: string
+    currentAddress: string
     city: string
     postalCode: string
     division: string
+    dateOfBirth: string
+    gender: string
     phone: string
     email: string
     photoDataUrl: string | null
   }
   workHistory: WorkHistoryItem[]
-  education: {
-    educationLevel: string
-    institution: string
-    institutionLocation: string
-    degree: string
-    fieldOfStudy: string
-    graduationMonth: string
-    graduationYear: string
-    description: string
-    projectUrl: string
-    gpa: string
-    awards: EducationAward[]
-  }
+  education: EducationItem[]
+  trainings: TrainingItem[]
   skills: ResumeSkill[]
   languages: ResumeLanguage[]
   references: ResumeReference[]
@@ -85,6 +107,171 @@ export type ResumeDraft = {
 
 export const RESUME_DRAFT_STORAGE_KEY = "jobmedia-resume-draft-v1"
 
+export function parseEducationAwards(value: unknown): EducationAward[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter(
+      (item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null
+    )
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id : generateId(),
+      title: typeof item.title === "string" ? item.title : "",
+      issuer: typeof item.issuer === "string" ? item.issuer : "",
+      year: typeof item.year === "string" ? item.year : "",
+    }))
+}
+
+export function createEmptyEducationItem(): EducationItem {
+  return {
+    id: generateId(),
+    educationLevel: "",
+    institution: "",
+    institutionLocation: "",
+    degree: "",
+    fieldOfStudy: "",
+    graduationMonth: "",
+    graduationYear: "",
+    description: "",
+    projectUrl: "",
+    gpa: "",
+    awards: [],
+  }
+}
+
+/** Normalize legacy single-object education drafts into an array (max 3). */
+export function normalizeEducationList(value: unknown): EducationItem[] {
+  if (Array.isArray(value)) {
+    const items = value
+      .filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === "object" && item !== null
+      )
+      .slice(0, MAX_EDUCATION_ENTRIES)
+      .map((item) => ({
+        id: typeof item.id === "string" ? item.id : generateId(),
+        educationLevel:
+          typeof item.educationLevel === "string" ? item.educationLevel : "",
+        institution:
+          typeof item.institution === "string" ? item.institution : "",
+        institutionLocation:
+          typeof item.institutionLocation === "string"
+            ? item.institutionLocation
+            : "",
+        degree: typeof item.degree === "string" ? item.degree : "",
+        fieldOfStudy:
+          typeof item.fieldOfStudy === "string" ? item.fieldOfStudy : "",
+        graduationMonth:
+          typeof item.graduationMonth === "string" ? item.graduationMonth : "",
+        graduationYear:
+          typeof item.graduationYear === "string" ? item.graduationYear : "",
+        description:
+          typeof item.description === "string" ? item.description : "",
+        projectUrl: typeof item.projectUrl === "string" ? item.projectUrl : "",
+        gpa: typeof item.gpa === "string" ? item.gpa : "",
+        awards: parseEducationAwards(item.awards),
+      }))
+
+    return items.length > 0 ? items : [createEmptyEducationItem()]
+  }
+
+  if (value && typeof value === "object") {
+    const item = value as Record<string, unknown>
+    return [
+      {
+        id: typeof item.id === "string" ? item.id : generateId(),
+        educationLevel:
+          typeof item.educationLevel === "string" ? item.educationLevel : "",
+        institution:
+          typeof item.institution === "string" ? item.institution : "",
+        institutionLocation:
+          typeof item.institutionLocation === "string"
+            ? item.institutionLocation
+            : "",
+        degree: typeof item.degree === "string" ? item.degree : "",
+        fieldOfStudy:
+          typeof item.fieldOfStudy === "string" ? item.fieldOfStudy : "",
+        graduationMonth:
+          typeof item.graduationMonth === "string" ? item.graduationMonth : "",
+        graduationYear:
+          typeof item.graduationYear === "string" ? item.graduationYear : "",
+        description:
+          typeof item.description === "string" ? item.description : "",
+        projectUrl: typeof item.projectUrl === "string" ? item.projectUrl : "",
+        gpa: typeof item.gpa === "string" ? item.gpa : "",
+        awards: parseEducationAwards(item.awards),
+      },
+    ]
+  }
+
+  return [createEmptyEducationItem()]
+}
+
+export const TRAINING_COURSE_TYPE_OPTIONS = [
+  { value: "certificate", label: "Certificate" },
+  { value: "diploma", label: "Diploma" },
+  { value: "workshop", label: "Workshop" },
+  { value: "online-course", label: "Online Course" },
+  { value: "professional-training", label: "Professional Training" },
+  { value: "seminar", label: "Seminar" },
+  { value: "other", label: "Other" },
+] as const
+
+export function getTrainingCourseTypeLabel(value: string) {
+  return (
+    TRAINING_COURSE_TYPE_OPTIONS.find((option) => option.value === value)
+      ?.label ?? value
+  )
+}
+
+export function createEmptyTrainingItem(): TrainingItem {
+  return {
+    id: generateId(),
+    courseType: "",
+    instituteName: "",
+    achievementMonth: "",
+    achievementYear: "",
+    certificateFileName: "",
+    certificatePdfDataUrl: null,
+  }
+}
+
+export function normalizeTrainingList(value: unknown): TrainingItem[] {
+  if (!Array.isArray(value)) {
+    return [createEmptyTrainingItem()]
+  }
+
+  const items = value
+    .filter(
+      (item): item is Record<string, unknown> =>
+        typeof item === "object" && item !== null
+    )
+    .slice(0, MAX_TRAINING_ENTRIES)
+    .map((item) => ({
+      id: typeof item.id === "string" ? item.id : generateId(),
+      courseType: typeof item.courseType === "string" ? item.courseType : "",
+      instituteName:
+        typeof item.instituteName === "string" ? item.instituteName : "",
+      achievementMonth:
+        typeof item.achievementMonth === "string"
+          ? item.achievementMonth
+          : "",
+      achievementYear:
+        typeof item.achievementYear === "string" ? item.achievementYear : "",
+      certificateFileName:
+        typeof item.certificateFileName === "string"
+          ? item.certificateFileName
+          : "",
+      certificatePdfDataUrl:
+        typeof item.certificatePdfDataUrl === "string"
+          ? item.certificatePdfDataUrl
+          : null,
+    }))
+
+  return items.length > 0 ? items : [createEmptyTrainingItem()]
+}
+
 export const EMPTY_RESUME_DRAFT: ResumeDraft = {
   id: generateId(),
   templateId: "classic",
@@ -92,9 +279,12 @@ export const EMPTY_RESUME_DRAFT: ResumeDraft = {
     givenName: "",
     familyName: "",
     profession: "",
+    currentAddress: "",
     city: "",
     postalCode: "",
     division: "",
+    dateOfBirth: "",
+    gender: "",
     phone: "",
     email: "",
     photoDataUrl: null,
@@ -114,19 +304,8 @@ export const EMPTY_RESUME_DRAFT: ResumeDraft = {
       responsibilities: "",
     },
   ],
-  education: {
-    educationLevel: "",
-    institution: "",
-    institutionLocation: "",
-    degree: "",
-    fieldOfStudy: "",
-    graduationMonth: "",
-    graduationYear: "",
-    description: "",
-    projectUrl: "",
-    gpa: "",
-    awards: [],
-  },
+  education: [createEmptyEducationItem()],
+  trainings: [createEmptyTrainingItem()],
   skills: [],
   languages: [],
   references: [],
@@ -173,7 +352,12 @@ export function loadResumeDraft(): ResumeDraft {
       return cachedDraft
     }
     const parsed = JSON.parse(raw) as Partial<ResumeDraft>
-    cachedDraft = mergeResumeDraft(EMPTY_RESUME_DRAFT, parsed)
+    const merged = mergeResumeDraft(EMPTY_RESUME_DRAFT, parsed)
+    cachedDraft = {
+      ...merged,
+      education: normalizeEducationList(merged.education),
+      trainings: normalizeTrainingList(merged.trainings),
+    }
     return cachedDraft
   } catch {
     cachedSerialized = null
@@ -184,15 +368,42 @@ export function loadResumeDraft(): ResumeDraft {
 
 export function saveResumeDraft(draft: ResumeDraft) {
   if (typeof window === "undefined") return
-  const serialized = JSON.stringify(draft)
-  if (serialized === cachedSerialized) {
-    cachedDraft = draft
-    return
+  const normalized: ResumeDraft = {
+    ...draft,
+    education: normalizeEducationList(draft.education),
+    trainings: normalizeTrainingList(draft.trainings),
   }
-  localStorage.setItem(RESUME_DRAFT_STORAGE_KEY, serialized)
-  cachedSerialized = serialized
-  cachedDraft = draft
-  window.dispatchEvent(new Event("resume-draft-changed"))
+
+  const persist = (value: ResumeDraft) => {
+    const serialized = JSON.stringify(value)
+    if (serialized === cachedSerialized) {
+      cachedDraft = normalized
+      return
+    }
+    localStorage.setItem(RESUME_DRAFT_STORAGE_KEY, serialized)
+    cachedSerialized = serialized
+    cachedDraft = normalized
+    window.dispatchEvent(new Event("resume-draft-changed"))
+  }
+
+  try {
+    persist(normalized)
+  } catch {
+    // Keep PDFs in memory; omit large certificate payloads from localStorage.
+    const withoutPdfs: ResumeDraft = {
+      ...normalized,
+      trainings: normalized.trainings.map((training) => ({
+        ...training,
+        certificatePdfDataUrl: null,
+      })),
+    }
+    try {
+      persist(withoutPdfs)
+      cachedDraft = normalized
+    } catch {
+      cachedDraft = normalized
+    }
+  }
 }
 
 export function mergeResumeDraft(
@@ -205,7 +416,14 @@ export function mergeResumeDraft(
     templateId: patch.templateId ?? base.templateId,
     contact: { ...base.contact, ...patch.contact },
     workHistory: patch.workHistory ?? base.workHistory,
-    education: { ...base.education, ...patch.education },
+    education:
+      patch.education !== undefined
+        ? normalizeEducationList(patch.education)
+        : base.education,
+    trainings:
+      patch.trainings !== undefined
+        ? normalizeTrainingList(patch.trainings)
+        : normalizeTrainingList(base.trainings),
     skills: patch.skills ?? base.skills,
     languages: patch.languages ?? base.languages,
     references: patch.references ?? base.references,
@@ -251,6 +469,9 @@ export function validateHeadingContact(
   if (!contact.profession.trim()) {
     errors.profession = "Professional title is required."
   }
+  if (!(contact.currentAddress ?? "").trim()) {
+    errors.currentAddress = "Current address is required."
+  }
   if (!contact.city.trim()) {
     errors.city = "City is required."
   }
@@ -259,6 +480,12 @@ export function validateHeadingContact(
   }
   if (!contact.division.trim()) {
     errors.division = "Division is required."
+  }
+  if (!(contact.dateOfBirth ?? "").trim()) {
+    errors.dateOfBirth = "Date of birth is required."
+  }
+  if (!(contact.gender ?? "").trim()) {
+    errors.gender = "Gender is required."
   }
   if (!contact.phone.trim()) {
     errors.phone = "Phone number is required."
@@ -276,13 +503,39 @@ export function isHeadingContactValid(contact: ResumeDraft["contact"]) {
   return Object.keys(validateHeadingContact(contact)).length === 0
 }
 
+export const GENDER_OPTIONS = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "other", label: "Other" },
+  { value: "prefer-not-to-say", label: "Prefer not to say" },
+] as const
+
+export function getGenderLabel(value: string) {
+  return GENDER_OPTIONS.find((option) => option.value === value)?.label ?? value
+}
+
+/** Format stored YYYY-MM-DD for resume display. */
+export function formatDateOfBirth(value?: string | null) {
+  const trimmed = typeof value === "string" ? value.trim() : ""
+  if (!trimmed) return ""
+
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return trimmed
+
+  const [, year, month, day] = match
+  const label = MONTHS.find((m) => m.value === month)?.label
+  if (label) return `${Number(day)} ${label} ${year}`
+  return trimmed
+}
+
 export function getContactLocation(draft: ResumeDraft) {
   const parts = [
+    draft.contact.currentAddress,
     draft.contact.city,
     draft.contact.division,
     draft.contact.postalCode,
   ]
-    .map((s) => s.trim())
+    .map((s) => (typeof s === "string" ? s.trim() : ""))
     .filter(Boolean)
   return parts.join(", ")
 }
@@ -343,10 +596,10 @@ export function formatWorkItemDates(work: WorkHistoryItem) {
   return start || end || ""
 }
 
-export function formatGraduationCompact(draft: ResumeDraft) {
+export function formatGraduationCompact(education: EducationItem) {
   return formatCompactMonthYear(
-    draft.education.graduationMonth,
-    draft.education.graduationYear
+    education.graduationMonth,
+    education.graduationYear
   )
 }
 
@@ -387,9 +640,12 @@ export function hasHeadingContent(draft: ResumeDraft): boolean {
     c.givenName.trim() ||
       c.familyName.trim() ||
       c.profession.trim() ||
+      c.currentAddress?.trim() ||
       c.city.trim() ||
       c.postalCode.trim() ||
       c.division.trim() ||
+      c.dateOfBirth?.trim() ||
+      c.gender?.trim() ||
       c.phone.trim() ||
       c.email.trim() ||
       c.photoDataUrl
@@ -413,22 +669,6 @@ export function hasWorkHistoryContent(draft: ResumeDraft): boolean {
   return draft.workHistory.some(hasWorkHistoryItemContent)
 }
 
-export function parseEducationAwards(value: unknown): EducationAward[] {
-  if (!Array.isArray(value)) return []
-
-  return value
-    .filter(
-      (item): item is Record<string, unknown> =>
-        typeof item === "object" && item !== null
-    )
-    .map((item) => ({
-      id: typeof item.id === "string" ? item.id : generateId(),
-      title: typeof item.title === "string" ? item.title : "",
-      issuer: typeof item.issuer === "string" ? item.issuer : "",
-      year: typeof item.year === "string" ? item.year : "",
-    }))
-}
-
 export function hasEducationAwardContent(award: EducationAward): boolean {
   return Boolean(award.title.trim() || award.issuer.trim() || award.year.trim())
 }
@@ -442,39 +682,89 @@ export function formatEducationAward(award: EducationAward): string {
   return `${title} (${meta})`
 }
 
-export function getPreviewEducationAwards(draft: ResumeDraft): EducationAward[] {
-  return draft.education.awards.filter(hasEducationAwardContent)
+export function getPreviewEducationAwards(
+  education: EducationItem
+): EducationAward[] {
+  return education.awards.filter(hasEducationAwardContent)
 }
 
-export function hasEducationAdditionalDetails(draft: ResumeDraft): boolean {
-  const e = draft.education
+export function hasEducationItemAdditionalDetails(
+  education: EducationItem
+): boolean {
   return Boolean(
-    e.gpa.trim() ||
-      e.description.trim() ||
-      e.projectUrl.trim() ||
-      e.awards.some(hasEducationAwardContent)
+    education.gpa.trim() ||
+      education.description.trim() ||
+      education.projectUrl.trim() ||
+      education.awards.some(hasEducationAwardContent)
+  )
+}
+
+export function hasEducationItemContent(education: EducationItem): boolean {
+  return Boolean(
+    education.educationLevel.trim() ||
+      education.institution.trim() ||
+      education.institutionLocation.trim() ||
+      education.degree.trim() ||
+      education.fieldOfStudy.trim() ||
+      education.graduationMonth ||
+      education.graduationYear ||
+      education.gpa.trim() ||
+      education.description.trim() ||
+      education.projectUrl.trim() ||
+      education.awards.some(hasEducationAwardContent)
   )
 }
 
 export function hasEducationContent(draft: ResumeDraft): boolean {
-  const e = draft.education
-  return Boolean(
-    e.educationLevel.trim() ||
-      e.institution.trim() ||
-      e.institutionLocation.trim() ||
-      e.degree.trim() ||
-      e.fieldOfStudy.trim() ||
-      e.graduationMonth ||
-      e.graduationYear ||
-      e.gpa.trim() ||
-      e.description.trim() ||
-      e.projectUrl.trim() ||
-      e.awards.some(hasEducationAwardContent)
+  return normalizeEducationList(draft.education).some(hasEducationItemContent)
+}
+
+export function getPreviewEducation(draft: ResumeDraft): EducationItem[] {
+  return normalizeEducationList(draft.education).filter(hasEducationItemContent)
+}
+
+export function hasEducationLevelSelected(draft: ResumeDraft): boolean {
+  return normalizeEducationList(draft.education).some((item) =>
+    item.educationLevel.trim()
   )
 }
 
 export function hasSkillsContent(draft: ResumeDraft): boolean {
   return draft.skills.length > 0
+}
+
+export function hasTrainingItemContent(training: TrainingItem): boolean {
+  return Boolean(
+    training.courseType.trim() ||
+      training.instituteName.trim() ||
+      training.achievementMonth ||
+      training.achievementYear ||
+      training.certificateFileName.trim()
+  )
+}
+
+export function hasTrainingContent(draft: ResumeDraft): boolean {
+  return normalizeTrainingList(draft.trainings).some(hasTrainingItemContent)
+}
+
+export function getPreviewTrainings(draft: ResumeDraft): TrainingItem[] {
+  return normalizeTrainingList(draft.trainings).filter(hasTrainingItemContent)
+}
+
+export function isTrainingItemComplete(training: TrainingItem): boolean {
+  return Boolean(
+    training.courseType.trim() && training.instituteName.trim()
+  )
+}
+
+export function hasCompleteTrainings(draft: ResumeDraft): boolean {
+  const items = getPreviewTrainings(draft)
+  if (items.length === 0) return true
+  return items.some(isTrainingItemComplete)
+}
+
+export function formatTrainingAchievementDate(training: TrainingItem) {
+  return formatMonthYear(training.achievementMonth, training.achievementYear)
 }
 
 export function hasLanguagesContent(draft: ResumeDraft): boolean {
@@ -525,7 +815,9 @@ export function hasPreviewContact(draft: ResumeDraft): boolean {
   return Boolean(
     getContactLocation(draft) ||
       draft.contact.phone.trim() ||
-      draft.contact.email.trim()
+      draft.contact.email.trim() ||
+      draft.contact.dateOfBirth?.trim() ||
+      draft.contact.gender?.trim()
   )
 }
 
@@ -538,7 +830,7 @@ export function computeResumeCompleteness(draft: ResumeDraft): number {
       draft.workHistory[0].jobTitle.trim() &&
       draft.workHistory[0].employer.trim()
     ),
-    Boolean(draft.education.educationLevel.trim()),
+    hasEducationLevelSelected(draft),
     draft.skills.length > 0,
     draft.summary.trim().length >= 40,
     hasCompleteReferences(draft),
@@ -568,7 +860,13 @@ export const FINALIZE_SECTIONS = [
     href: "/new/education",
     label: "Education",
     hasContent: hasEducationContent,
-    isComplete: (d: ResumeDraft) => Boolean(d.education.educationLevel.trim()),
+    isComplete: hasEducationLevelSelected,
+  },
+  {
+    href: "/new/training",
+    label: "Training",
+    hasContent: hasTrainingContent,
+    isComplete: hasCompleteTrainings,
   },
   {
     href: "/new/skills",

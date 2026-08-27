@@ -1,14 +1,14 @@
 import {
   formatEducationAward,
   getPreviewEducationAwards,
-  hasEducationAdditionalDetails,
-  type ResumeDraft,
+  hasEducationItemAdditionalDetails,
+  type EducationItem,
 } from "@/lib/resume-draft"
 import { sanitizeHttpsUrl } from "@/lib/security/sanitize-resume"
 import { cn } from "@/lib/utils"
 
 type EducationAdditionalDetailsProps = {
-  draft: ResumeDraft
+  education: EducationItem
   className?: string
   textClassName?: string
   linkClassName?: string
@@ -16,19 +16,17 @@ type EducationAdditionalDetailsProps = {
 }
 
 export function EducationAdditionalDetails({
-  draft,
+  education,
   className,
   textClassName = "text-[11px] text-neutral-700",
   linkClassName = "text-[11px] text-blue-700 underline underline-offset-2",
   linkStyle,
 }: EducationAdditionalDetailsProps) {
-  const education = draft.education
-
-  if (!hasEducationAdditionalDetails(draft)) {
+  if (!hasEducationItemAdditionalDetails(education)) {
     return null
   }
 
-  const awards = getPreviewEducationAwards(draft)
+  const awards = getPreviewEducationAwards(education)
   const projectUrl = sanitizeHttpsUrl(education.projectUrl)
 
   return (

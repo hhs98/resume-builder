@@ -4,7 +4,6 @@ import { useState } from "react"
 import {
   Globe,
   GripVertical,
-  Lightbulb,
   Plus,
   Search,
   Star,
@@ -12,6 +11,12 @@ import {
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
+import {
+  BuilderFormCard,
+  BuilderStepHeader,
+  BuilderStepPage,
+  BuilderTipsButton,
+} from "@/components/resume/builder-step-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useResumeDraft } from "@/hooks/use-resume-draft"
@@ -110,34 +115,14 @@ export function LanguagesStep() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9fb]">
-      <div className="mx-auto max-w-3xl px-6 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <header className="max-w-2xl space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
-              Which languages do you speak?
-            </h1>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-              Add the languages you know and rate your proficiency level.
-            </p>
-          </header>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 gap-1.5 self-start rounded-full border-blue-200 bg-white px-4 text-blue-600 shadow-none hover:bg-blue-50 sm:self-auto"
-          >
-            <Lightbulb className="size-4" aria-hidden />
-            Tips
-          </Button>
-        </div>
+    <BuilderStepPage>
+      <BuilderStepHeader
+        title="Which languages do you speak?"
+        description="Add the languages you know and rate your proficiency level."
+        action={<BuilderTipsButton />}
+      />
 
-        <div className="relative mt-8 overflow-hidden rounded-2xl border border-border/60 bg-white p-5 shadow-sm sm:p-6">
-          <div
-            className="absolute inset-y-0 left-0 w-1 bg-blue-600"
-            aria-hidden
-          />
-
+        <BuilderFormCard className="mt-8" padding="sm">
           <div className="pl-2">
             <label
               htmlFor="languageName"
@@ -219,7 +204,7 @@ export function LanguagesStep() {
               })}
             </div>
           </div>
-        </div>
+        </BuilderFormCard>
 
         <section className="mt-8">
           <div className="flex items-center gap-2">
@@ -367,7 +352,6 @@ export function LanguagesStep() {
           nextHref="/new/summary"
           nextLabel="Next: Summary"
         />
-      </div>
-    </div>
+    </BuilderStepPage>
   )
 }

@@ -1,17 +1,24 @@
 "use client"
 
 import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
+import { ResumeWatermark } from "@/components/resume/resume-watermark"
 import {
+  formatDateOfBirth,
   formatGraduationCompact,
+  formatTrainingAchievementDate,
   formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getGenderLabel,
+  getPreviewEducation,
   getPreviewLanguages,
   getPreviewReferences,
   getPreviewSkills,
+  getPreviewTrainings,
   getPreviewWorkHistory,
+  getTrainingCourseTypeLabel,
   hasEducationContent,
   hasPreviewContact,
   hasPreviewLanguages,
@@ -19,6 +26,7 @@ import {
   hasPreviewSkills,
   hasPreviewWorkHistory,
   hasSummaryContent,
+  hasTrainingContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -43,28 +51,17 @@ export function ModernGoldPreview({
   const colors = getModernPreviewColors(tone)
   const name = getFullName(draft) || "Your name"
   const address = getContactLocation(draft)
-  const gradDate = formatGraduationCompact(draft)
 
   const workHistory = getPreviewWorkHistory(draft)
+  const educationEntries = getPreviewEducation(draft)
+  const trainingEntries = getPreviewTrainings(draft)
   const skills = getPreviewSkills(draft)
   const languages = getPreviewLanguages(draft)
   const references = getPreviewReferences(draft)
 
-  const educationTitle =
-    draft.education.degree.trim() !== ""
-      ? getDegreeLabel(draft.education.degree)
-      : draft.education.fieldOfStudy.trim() ||
-        getEducationLevelLabel(draft.education.educationLevel)
-
-  const educationOrg = [
-    draft.education.institution,
-    draft.education.institutionLocation,
-  ]
-    .filter(Boolean)
-    .join(", ")
-
   const hasWork = hasPreviewWorkHistory(draft)
   const hasEducation = hasEducationContent(draft)
+  const hasTraining = hasTrainingContent(draft)
   const hasSkills = hasPreviewSkills(draft)
   const hasSummary = hasSummaryContent(draft)
   const hasContact = hasPreviewContact(draft)
@@ -72,14 +69,14 @@ export function ModernGoldPreview({
   const hasLanguages = hasPreviewLanguages(draft)
 
   const isEmpty =
-    !hasSummary && !hasWork && !hasEducation && !hasSkills && !hasContact && !hasReferences && !hasLanguages
+    !hasSummary && !hasWork && !hasEducation && !hasTraining && !hasSkills && !hasContact && !hasReferences && !hasLanguages
 
   return (
     <article
       id={id}
       data-resume-template="modern"
       className={cn(
-        "resume-preview resume-preview--modern mx-auto w-full max-w-[210mm] overflow-hidden bg-white font-sans text-[11px] leading-relaxed text-neutral-800 shadow-sm",
+        "resume-preview resume-preview--modern relative mx-auto w-full max-w-[210mm] overflow-hidden bg-white font-sans text-[11px] leading-relaxed text-neutral-800 shadow-sm",
         "min-h-[297mm]",
         className
       )}
@@ -112,47 +109,69 @@ export function ModernGoldPreview({
       {/* CONTACT */}
       {hasContact ? (
         <div
-          className="grid grid-cols-[auto_1fr_auto] items-stretch px-8 py-4"
+          className="px-8 py-4"
           style={{ backgroundColor: colors.contactBar }}
         >
-          <div className="flex items-center pr-6">
-            <p className="text-sm font-bold" style={{ color: colors.gold }}>
+          <div className="flex items-start gap-6">
+            <p
+              className="shrink-0 pt-0.5 text-sm font-bold"
+              style={{ color: colors.gold }}
+            >
               Contact
             </p>
-          </div>
+            <div className="grid flex-1 grid-cols-2 gap-x-8 gap-y-2 border-l border-neutral-300 pl-6 sm:grid-cols-3">
+              {address ? (
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-900">
+                    Address
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-neutral-800">{address}</p>
+                </div>
+              ) : null}
 
-          <div className="grid flex-1 grid-cols-2 gap-x-8 gap-y-2 border-l border-neutral-300 pl-6">
-            {address ? (
-              <div>
-                <p className="text-[10px] font-bold text-neutral-900">
-                  Address
-                </p>
-                <p className="mt-0.5 text-[10px] text-neutral-800">{address}</p>
-              </div>
-            ) : (
-              <span />
-            )}
+              {draft.contact.email.trim() ? (
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-900">
+                    E-mail
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-neutral-800">
+                    {draft.contact.email}
+                  </p>
+                </div>
+              ) : null}
 
-            {draft.contact.email.trim() ? (
-              <div>
-                <p className="text-[10px] font-bold text-neutral-900">E-mail</p>
-                <p className="mt-0.5 text-[10px] text-neutral-800">
-                  {draft.contact.email}
-                </p>
-              </div>
-            ) : (
-              <span />
-            )}
-          </div>
+              {draft.contact.phone.trim() ? (
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-900">Phone</p>
+                  <p className="mt-0.5 text-[10px] text-neutral-800">
+                    {draft.contact.phone}
+                  </p>
+                </div>
+              ) : null}
 
-          {draft.contact.phone.trim() ? (
-            <div className="border-l border-neutral-300 pl-6">
-              <p className="text-[10px] font-bold text-neutral-900">Phone</p>
-              <p className="mt-0.5 text-[10px] text-neutral-800">
-                {draft.contact.phone}
-              </p>
+              {formatDateOfBirth(draft.contact.dateOfBirth) ? (
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-900">
+                    Date of Birth
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-neutral-800">
+                    {formatDateOfBirth(draft.contact.dateOfBirth)}
+                  </p>
+                </div>
+              ) : null}
+
+              {draft.contact.gender?.trim() ? (
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-900">
+                    Gender
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-neutral-800">
+                    {getGenderLabel(draft.contact.gender)}
+                  </p>
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -276,36 +295,90 @@ export function ModernGoldPreview({
           <section>
             <SectionHeading title="Education" />
 
-            <div className="mt-4 grid grid-cols-[5.5rem_1fr] gap-x-4">
-              {gradDate ? (
-                <p className="text-[10px] font-bold text-neutral-900">
-                  {gradDate}
-                </p>
-              ) : (
-                <span />
-              )}
+            <div className="mt-4 space-y-4">
+              {educationEntries.map((education) => {
+                const gradDate = formatGraduationCompact(education)
+                const educationTitle =
+                  education.degree.trim() !== ""
+                    ? getDegreeLabel(education.degree)
+                    : education.fieldOfStudy.trim() ||
+                      getEducationLevelLabel(education.educationLevel)
 
-              <div>
-                {educationTitle ? (
-                  <p className="font-bold text-neutral-900">
-                    {educationTitle}
-                  </p>
-                ) : null}
+                const educationOrg = [
+                  education.institution,
+                  education.institutionLocation,
+                ]
+                  .filter(Boolean)
+                  .join(", ")
 
-                {educationOrg ? (
-                  <p className="text-[11px] italic text-neutral-800">
-                    {educationOrg}
-                  </p>
-                ) : null}
+                return (
+                  <div
+                    key={education.id}
+                    className="grid grid-cols-[1fr_5.5rem] gap-x-4"
+                  >
+                    <div>
+                      {educationTitle ? (
+                        <p className="font-bold text-neutral-900">
+                          {educationTitle}
+                        </p>
+                      ) : null}
 
-                <EducationAdditionalDetails
-                  draft={draft}
-                  className="mt-2"
-                  textClassName="text-[11px] text-neutral-800"
-                  linkClassName="text-[11px] underline underline-offset-2"
-                  linkStyle={{ color: colors.link }}
-                />
-              </div>
+                      {educationOrg ? (
+                        <p className="text-[11px] italic text-neutral-800">
+                          {educationOrg}
+                        </p>
+                      ) : null}
+
+                      <EducationAdditionalDetails
+                        education={education}
+                        className="mt-2"
+                        textClassName="text-[11px] text-neutral-800"
+                        linkClassName="text-[11px] underline underline-offset-2"
+                        linkStyle={{ color: colors.link }}
+                      />
+                    </div>
+
+                    {gradDate ? (
+                      <p className="text-right text-[10px] font-bold text-neutral-900">
+                        {gradDate}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {/* TRAINING */}
+        {hasTraining ? (
+          <section>
+            <SectionHeading title="Training & Courses" />
+            <div className="mt-4 space-y-3">
+              {trainingEntries.map((training) => {
+                const dateLabel = formatTrainingAchievementDate(training)
+                const typeLabel = training.courseType.trim()
+                  ? getTrainingCourseTypeLabel(training.courseType)
+                  : ""
+
+                return (
+                  <div key={training.id}>
+                    {typeLabel ? (
+                      <p className="font-bold text-neutral-900">{typeLabel}</p>
+                    ) : null}
+                    {training.instituteName.trim() ? (
+                      <p className="text-[11px] italic text-neutral-800">
+                        {training.instituteName.trim()}
+                      </p>
+                    ) : null}
+                    {dateLabel ? (
+                      <p className="text-[10px] text-neutral-600">{dateLabel}</p>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </section>
         ) : null}
@@ -338,6 +411,7 @@ export function ModernGoldPreview({
           </p>
         ) : null}
       </div>
+      <ResumeWatermark />
     </article>
   )
 }

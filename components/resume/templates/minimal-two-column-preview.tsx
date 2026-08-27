@@ -3,17 +3,24 @@
 import { Phone } from "lucide-react"
 
 import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
+import { ResumeWatermark } from "@/components/resume/resume-watermark"
 import {
+  formatDateOfBirth,
   formatGraduationCompact,
+  formatTrainingAchievementDate,
   formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getGenderLabel,
+  getPreviewEducation,
   getPreviewLanguages,
   getPreviewReferences,
   getPreviewSkills,
+  getPreviewTrainings,
   getPreviewWorkHistory,
+  getTrainingCourseTypeLabel,
   hasEducationContent,
   hasPreviewContact,
   hasPreviewLanguages,
@@ -21,6 +28,7 @@ import {
   hasPreviewSkills,
   hasPreviewWorkHistory,
   hasSummaryContent,
+  hasTrainingContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -45,9 +53,10 @@ export function MinimalTwoColumnPreview({
   const colors = getMinimalPreviewColors(tone)
   const name = (getFullName(draft) || "Your name").toUpperCase()
   const address = getContactLocation(draft)
-  const gradDate = formatGraduationCompact(draft)
 
   const workHistory = getPreviewWorkHistory(draft)
+  const educationEntries = getPreviewEducation(draft)
+  const trainingEntries = getPreviewTrainings(draft)
   const skills = getPreviewSkills(draft)
   const languages = getPreviewLanguages(draft)
   const references = getPreviewReferences(draft)
@@ -57,19 +66,8 @@ export function MinimalTwoColumnPreview({
   const hasSummary = hasSummaryContent(draft)
   const hasSkills = hasPreviewSkills(draft)
 
-  const degreeLine =
-    draft.education.degree.trim() !== ""
-      ? getDegreeLabel(draft.education.degree)
-      : getEducationLevelLabel(draft.education.educationLevel)
-
-  const educationMetaLine = [
-    draft.education.institutionLocation,
-    gradDate,
-  ]
-    .filter(Boolean)
-    .join(" · ")
-
   const hasEducation = hasEducationContent(draft)
+  const hasTraining = hasTrainingContent(draft)
   const hasReferences = hasPreviewReferences(draft)
   const hasLanguages = hasPreviewLanguages(draft)
 
@@ -79,6 +77,7 @@ export function MinimalTwoColumnPreview({
     !hasWork &&
     !hasSkills &&
     !hasEducation &&
+    !hasTraining &&
     !hasReferences &&
     !hasLanguages
 
@@ -87,7 +86,7 @@ export function MinimalTwoColumnPreview({
       id={id}
       data-resume-template="minimal"
       className={cn(
-        "resume-preview resume-preview--minimal mx-auto w-full max-w-[210mm] bg-white shadow-sm",
+        "resume-preview resume-preview--minimal relative mx-auto w-full max-w-[210mm] bg-white shadow-sm",
         "min-h-[297mm] font-serif text-[11px] leading-relaxed",
         className
       )}
@@ -136,6 +135,16 @@ export function MinimalTwoColumnPreview({
               <b>A:</b> {address}
             </span>
           )}
+          {formatDateOfBirth(draft.contact.dateOfBirth) ? (
+            <span>
+              <b>DOB:</b> {formatDateOfBirth(draft.contact.dateOfBirth)}
+            </span>
+          ) : null}
+          {draft.contact.gender?.trim() ? (
+            <span>
+              <b>G:</b> {getGenderLabel(draft.contact.gender)}
+            </span>
+          ) : null}
         </div>
       ) : null}
 
@@ -216,19 +225,66 @@ export function MinimalTwoColumnPreview({
           {hasEducation && (
             <section>
               <SectionHeader title="Education" />
-              <div className="mt-3 space-y-1">
-                <p className="font-bold">{draft.education.institution}</p>
-                <p className="text-[10px] text-slate-600">
-                  {educationMetaLine}
-                </p>
-                <p className="italic">{degreeLine}</p>
-                <EducationAdditionalDetails
-                  draft={draft}
-                  className="mt-2"
-                  textClassName="text-[10px] text-slate-700"
-                  linkClassName="text-[10px] underline underline-offset-2"
-                  linkStyle={{ color: colors.link }}
-                />
+              <div className="mt-3 space-y-4">
+                {educationEntries.map((education) => {
+                  const gradDate = formatGraduationCompact(education)
+                  const degreeLine =
+                    education.degree.trim() !== ""
+                      ? getDegreeLabel(education.degree)
+                      : getEducationLevelLabel(education.educationLevel)
+
+                  const educationMetaLine = [
+                    education.institutionLocation,
+                    gradDate,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+
+                  return (
+                    <div key={education.id} className="space-y-1">
+                      <p className="font-bold">{education.institution}</p>
+                      <p className="text-[10px] text-slate-600">
+                        {educationMetaLine}
+                      </p>
+                      <p className="italic">{degreeLine}</p>
+                      <EducationAdditionalDetails
+                        education={education}
+                        className="mt-2"
+                        textClassName="text-[10px] text-slate-700"
+                        linkClassName="text-[10px] underline underline-offset-2"
+                        linkStyle={{ color: colors.link }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {hasTraining && (
+            <section>
+              <SectionHeader title="Training" />
+              <div className="mt-3 space-y-3">
+                {trainingEntries.map((training) => {
+                  const dateLabel = formatTrainingAchievementDate(training)
+                  const typeLabel = training.courseType.trim()
+                    ? getTrainingCourseTypeLabel(training.courseType)
+                    : ""
+
+                  return (
+                    <div key={training.id} className="space-y-0.5">
+                      {typeLabel ? (
+                        <p className="font-bold">{typeLabel}</p>
+                      ) : null}
+                      {training.instituteName.trim() ? (
+                        <p className="italic">{training.instituteName.trim()}</p>
+                      ) : null}
+                      {dateLabel ? (
+                        <p className="text-[10px] text-slate-600">{dateLabel}</p>
+                      ) : null}
+                    </div>
+                  )
+                })}
               </div>
             </section>
           )}
@@ -258,6 +314,7 @@ export function MinimalTwoColumnPreview({
           Fill in the builder steps to see your resume here.
         </p>
       )}
+      <ResumeWatermark />
     </article>
   )
 }

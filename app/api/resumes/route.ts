@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { prisma } from "@/lib/prisma"
-import type { ResumeDraft } from "@/lib/resume-draft"
+import { MAX_EDUCATION_ENTRIES, MAX_TRAINING_ENTRIES, type ResumeDraft } from "@/lib/resume-draft"
 import { requireDownloadPermit } from "@/lib/security/download-permit"
 import { enforceRateLimit } from "@/lib/security/rate-limit-api"
 import { sanitizeResumeDraftForSave } from "@/lib/security/sanitize-resume"
@@ -33,27 +33,53 @@ export async function POST(req: Request) {
         givenName: draft.contact.givenName,
         familyName: draft.contact.familyName,
         profession: draft.contact.profession,
+        currentAddress: draft.contact.currentAddress || null,
         city: draft.contact.city,
         postalCode: draft.contact.postalCode,
         division: draft.contact.division,
+        dateOfBirth: draft.contact.dateOfBirth || null,
+        gender: draft.contact.gender || null,
         phone: draft.contact.phone,
         email: draft.contact.email,
         photoDataUrl: draft.contact.photoDataUrl,
         summary: draft.summary,
         education: {
-          create: {
-            educationLevel: draft.education.educationLevel,
-            institution: draft.education.institution,
-            institutionLocation: draft.education.institutionLocation,
-            degree: draft.education.degree,
-            fieldOfStudy: draft.education.fieldOfStudy,
-            graduationMonth: draft.education.graduationMonth,
-            graduationYear: draft.education.graduationYear,
-            description: draft.education.description || null,
-            projectUrl: draft.education.projectUrl || null,
-            gpa: draft.education.gpa || null,
-            awards: draft.education.awards,
-          },
+          create: draft.education
+            .slice(0, MAX_EDUCATION_ENTRIES)
+            .map((education) => ({
+              educationLevel: education.educationLevel,
+              institution: education.institution,
+              institutionLocation: education.institutionLocation,
+              degree: education.degree,
+              fieldOfStudy: education.fieldOfStudy,
+              graduationMonth: education.graduationMonth,
+              graduationYear: education.graduationYear,
+              description: education.description || null,
+              projectUrl: education.projectUrl || null,
+              gpa: education.gpa || null,
+              awards: education.awards,
+            })),
+        },
+        trainings: {
+          create: (draft.trainings ?? [])
+            .slice(0, MAX_TRAINING_ENTRIES)
+            .filter(
+              (training) =>
+                training.courseType.trim() ||
+                training.instituteName.trim() ||
+                training.achievementMonth ||
+                training.achievementYear ||
+                training.certificateFileName.trim() ||
+                training.certificatePdfDataUrl
+            )
+            .map((training) => ({
+              courseType: training.courseType,
+              instituteName: training.instituteName,
+              achievementMonth: training.achievementMonth,
+              achievementYear: training.achievementYear,
+              certificateFileName: training.certificateFileName || null,
+              certificatePdfDataUrl: training.certificatePdfDataUrl,
+            })),
         },
         workHistory: {
           create: draft.workHistory.map((work) => ({

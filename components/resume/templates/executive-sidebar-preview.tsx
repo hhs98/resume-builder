@@ -1,17 +1,24 @@
 "use client"
 
 import { EducationAdditionalDetails } from "@/components/resume/education-additional-details"
+import { ResumeWatermark } from "@/components/resume/resume-watermark"
 import {
+  formatDateOfBirth,
   formatGraduationCompact,
+  formatTrainingAchievementDate,
   formatWorkItemDates,
   getContactLocation,
   getDegreeLabel,
   getEducationLevelLabel,
   getFullName,
+  getGenderLabel,
+  getPreviewEducation,
   getPreviewLanguages,
   getPreviewReferences,
   getPreviewSkills,
+  getPreviewTrainings,
   getPreviewWorkHistory,
+  getTrainingCourseTypeLabel,
   hasEducationContent,
   hasPreviewContact,
   hasPreviewLanguages,
@@ -19,6 +26,7 @@ import {
   hasPreviewSkills,
   hasPreviewWorkHistory,
   hasSummaryContent,
+  hasTrainingContent,
   type ResumeDraft,
 } from "@/lib/resume-draft"
 import { cn } from "@/lib/utils"
@@ -52,26 +60,15 @@ export function ExecutiveSidebarPreview({
   const address = getContactLocation(draft)
 
   const workHistory = getPreviewWorkHistory(draft)
+  const educationEntries = getPreviewEducation(draft)
+  const trainingEntries = getPreviewTrainings(draft)
   const skills = getPreviewSkills(draft)
   const languages = getPreviewLanguages(draft)
   const references = getPreviewReferences(draft)
-  const gradDate = formatGraduationCompact(draft)
-
-  const educationTitle =
-    draft.education.degree.trim() !== ""
-      ? getDegreeLabel(draft.education.degree)
-      : draft.education.fieldOfStudy.trim() ||
-        getEducationLevelLabel(draft.education.educationLevel)
-
-  const educationOrg = [
-    draft.education.institution,
-    draft.education.institutionLocation,
-  ]
-    .filter((s) => s.trim())
-    .join(", ")
 
   const hasWork = hasPreviewWorkHistory(draft)
   const hasEducation = hasEducationContent(draft)
+  const hasTraining = hasTrainingContent(draft)
   const hasSkills = hasPreviewSkills(draft)
   const hasSummary = hasSummaryContent(draft)
   const hasContact = hasPreviewContact(draft)
@@ -82,6 +79,7 @@ export function ExecutiveSidebarPreview({
     !hasSummary &&
     !hasWork &&
     !hasEducation &&
+    !hasTraining &&
     !hasSkills &&
     !hasContact &&
     !hasReferences &&
@@ -92,7 +90,7 @@ export function ExecutiveSidebarPreview({
       id={id}
       data-resume-template="executive"
       className={cn(
-        "resume-preview resume-preview--executive mx-auto flex w-full max-w-[210mm] overflow-hidden bg-white text-[11px] leading-relaxed text-neutral-800 shadow-sm",
+        "resume-preview resume-preview--executive relative mx-auto flex w-full max-w-[210mm] overflow-hidden bg-white text-[11px] leading-relaxed text-neutral-800 shadow-sm",
         "min-h-[297mm] font-sans",
         className
       )}
@@ -132,6 +130,18 @@ export function ExecutiveSidebarPreview({
             {draft.contact.email.trim() && (
               <ContactRow label="E-mail" value={draft.contact.email} />
             )}
+            {formatDateOfBirth(draft.contact.dateOfBirth) ? (
+              <ContactRow
+                label="Date of Birth"
+                value={formatDateOfBirth(draft.contact.dateOfBirth)}
+              />
+            ) : null}
+            {draft.contact.gender?.trim() ? (
+              <ContactRow
+                label="Gender"
+                value={getGenderLabel(draft.contact.gender)}
+              />
+            ) : null}
           </SidebarBlock>
         ) : null}
 
@@ -167,7 +177,7 @@ export function ExecutiveSidebarPreview({
       </aside>
 
       {/* MAIN */}
-      <main className="min-w-0 flex-1 px-8 py-8">
+      <main className="relative min-w-0 flex-1 px-8 py-8">
         {hasSummary ? (
           <p className="text-[11px] leading-relaxed text-neutral-700">
             {draft.summary.trim()}
@@ -225,21 +235,74 @@ export function ExecutiveSidebarPreview({
         {hasEducation ? (
           <section className="mt-2">
             <MainSectionHeader title="Education" colors={colors} />
-            <div className="mt-4">
-              <p className="font-bold text-neutral-900">{educationTitle}</p>
-              <p className="text-[11px] text-neutral-600 italic">
-                {educationOrg}
-              </p>
-              {gradDate && (
-                <p className="text-[10px] text-neutral-500">{gradDate}</p>
-              )}
-              <EducationAdditionalDetails
-                draft={draft}
-                className="mt-2"
-                textClassName="text-[11px] text-neutral-700"
-                linkClassName="text-[11px] underline underline-offset-2"
-                linkStyle={{ color: colors.link }}
-              />
+            <div className="mt-4 space-y-4">
+              {educationEntries.map((education) => {
+                const gradDate = formatGraduationCompact(education)
+                const educationTitle =
+                  education.degree.trim() !== ""
+                    ? getDegreeLabel(education.degree)
+                    : education.fieldOfStudy.trim() ||
+                      getEducationLevelLabel(education.educationLevel)
+
+                const educationOrg = [
+                  education.institution,
+                  education.institutionLocation,
+                ]
+                  .filter((s) => s.trim())
+                  .join(", ")
+
+                return (
+                  <div key={education.id}>
+                    <p className="font-bold text-neutral-900">
+                      {educationTitle}
+                    </p>
+                    <p className="text-[11px] text-neutral-600 italic">
+                      {educationOrg}
+                    </p>
+                    {gradDate ? (
+                      <p className="text-[10px] text-neutral-500">{gradDate}</p>
+                    ) : null}
+                    <EducationAdditionalDetails
+                      education={education}
+                      className="mt-2"
+                      textClassName="text-[11px] text-neutral-700"
+                      linkClassName="text-[11px] underline underline-offset-2"
+                      linkStyle={{ color: colors.link }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {/* TRAINING */}
+        {hasTraining ? (
+          <section className="mt-2">
+            <MainSectionHeader title="Training & Courses" colors={colors} />
+            <div className="mt-4 space-y-3">
+              {trainingEntries.map((training) => {
+                const dateLabel = formatTrainingAchievementDate(training)
+                const typeLabel = training.courseType.trim()
+                  ? getTrainingCourseTypeLabel(training.courseType)
+                  : ""
+
+                return (
+                  <div key={training.id}>
+                    {typeLabel ? (
+                      <p className="font-bold text-neutral-900">{typeLabel}</p>
+                    ) : null}
+                    {training.instituteName.trim() ? (
+                      <p className="text-[11px] text-neutral-600 italic">
+                        {training.instituteName.trim()}
+                      </p>
+                    ) : null}
+                    {dateLabel ? (
+                      <p className="text-[10px] text-neutral-500">{dateLabel}</p>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </section>
         ) : null}
@@ -274,6 +337,7 @@ export function ExecutiveSidebarPreview({
             Fill in the builder steps to see your resume here.
           </p>
         ) : null}
+        <ResumeWatermark className="right-4" />
       </main>
     </article>
   )

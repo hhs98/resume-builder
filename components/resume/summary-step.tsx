@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Check,
   ChevronDown,
-  Lightbulb,
   Plus,
   Search,
   Sparkles,
@@ -12,6 +11,11 @@ import {
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
+import {
+  BuilderStepHeader,
+  BuilderStepPage,
+  BuilderTipsButton,
+} from "@/components/resume/builder-step-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -324,28 +328,12 @@ export function SummaryStep() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9fb]">
-      <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <header className="max-w-2xl space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
-              Briefly tell us about your background
-            </h1>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-              Choose from our pre-written examples below or write your own
-              summary to highlight your key achievements.
-            </p>
-          </header>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 gap-1.5 self-start rounded-full border-blue-200 bg-white px-4 text-blue-600 shadow-none hover:bg-blue-50 sm:self-auto"
-          >
-            <Lightbulb className="size-4" aria-hidden />
-            Tips
-          </Button>
-        </div>
+    <BuilderStepPage maxWidth="6xl">
+      <BuilderStepHeader
+        title="Briefly tell us about your background"
+        description="Choose from our pre-written examples below or write your own summary to highlight your key achievements."
+        action={<BuilderTipsButton />}
+      />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start xl:grid-cols-[1fr_420px]">
           <div className="min-w-0 space-y-6">
@@ -587,6 +575,7 @@ export function SummaryStep() {
                 placeholder="Start typing your summary here..."
                 aria-label="Professional summary"
                 value={summary}
+                maxLength={SUMMARY_CHAR_LIMIT}
                 onChange={(e) => handleSummaryChange(e.target.value)}
               />
               <div className="mt-3 flex items-end justify-between gap-4">
@@ -635,7 +624,6 @@ export function SummaryStep() {
           nextHref="/new/references"
           nextLabel="Next: References"
         />
-      </div>
-    </div>
+    </BuilderStepPage>
   )
 }

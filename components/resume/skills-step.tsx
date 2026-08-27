@@ -5,7 +5,7 @@ import {
   Check,
   ChevronDown,
   ClipboardList,
-  Lightbulb,
+  Pencil,
   Plus,
   Search,
   Sparkles,
@@ -13,6 +13,11 @@ import {
 } from "lucide-react"
 
 import { BuilderStepFooter } from "@/components/resume/builder-step-footer"
+import {
+  BuilderStepHeader,
+  BuilderStepPage,
+  BuilderTipsButton,
+} from "@/components/resume/builder-step-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,6 +32,75 @@ import { MAX_SKILL_WORDS, normalizeSkillName } from "@/lib/enhance-skills"
 import { getPrimaryJobTitle } from "@/lib/resume-draft"
 import type { ResumeSkill } from "@/lib/resume-draft"
 import { cn, generateId } from "@/lib/utils"
+
+const MAX_SKILL_RATING = 5
+
+const SKILL_RATING_LABELS: Record<number, string> = {
+  1: "Beginner",
+  2: "Elementary",
+  3: "Intermediate",
+  4: "Advanced",
+  5: "Expert",
+}
+
+function SkillRatingDots({
+  skillName,
+  rating,
+  onChange,
+}: {
+  skillName: string
+  rating: number
+  onChange: (rating: number) => void
+}) {
+  const safeRating = Math.min(
+    MAX_SKILL_RATING,
+    Math.max(1, Math.round(rating) || 1)
+  )
+
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <div
+        className="inline-flex items-center gap-1"
+        role="radiogroup"
+        aria-label={`${skillName} proficiency`}
+      >
+        {Array.from({ length: MAX_SKILL_RATING }).map((_, index) => {
+          const value = index + 1
+          const filled = value <= safeRating
+
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={value === safeRating}
+              aria-label={`${value} of ${MAX_SKILL_RATING} — ${SKILL_RATING_LABELS[value]}`}
+              title={SKILL_RATING_LABELS[value]}
+              onClick={() => onChange(value)}
+              className={cn(
+                "flex size-5 items-center justify-center rounded-full transition-colors",
+                "hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A65CC]/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "size-2.5 rounded-full border-2 transition-colors",
+                  filled
+                    ? "border-[#0A65CC] bg-[#0A65CC]"
+                    : "border-muted-foreground/35 bg-transparent"
+                )}
+                aria-hidden
+              />
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[0.65rem] font-medium text-muted-foreground">
+        {SKILL_RATING_LABELS[safeRating]}
+      </p>
+    </div>
+  )
+}
 
 const SUGGESTED_ROLES = [
   "Customer Service",
@@ -147,6 +221,7 @@ export function SkillsStep() {
   const [searchAiError, setSearchAiError] = useState<string | null>(null)
   const customSkillsRef = useRef<HTMLTextAreaElement>(null)
   const draftRef = useRef(draft)
+  const skillNameSnapshotRef = useRef<Record<string, string>>({})
   const [lastAiSearchQuery, setLastAiSearchQuery] = useState<string | null>(null)
   const searchAbortRef = useRef<AbortController | null>(null)
 
@@ -266,6 +341,56 @@ export function SkillsStep() {
     setSkills(skills.filter((s) => s.id !== id))
   }
 
+  function setSkillRating(id: string, rating: number) {
+    const nextRating = Math.min(
+      MAX_SKILL_RATING,
+      Math.max(1, Math.round(rating))
+    )
+    updateSkill(id, { rating: nextRating })
+  }
+
+  function updateSkill(id: string, patch: Partial<ResumeSkill>) {
+    setSkills(
+      skills.map((skill) => (skill.id === id ? { ...skill, ...patch } : skill))
+    )
+  }
+
+  function finalizeSkillName(id: string, rawName: string) {
+    const trimmed = rawName.trim().replace(/\s+/g, " ")
+    const revertTo = skillNameSnapshotRef.current[id]
+    const current = skills.find((skill) => skill.id === id)
+    if (!current) return
+
+    delete skillNameSnapshotRef.current[id]
+
+    if (!trimmed) {
+      removeSkill(id)
+      return
+    }
+
+    const isDuplicate = skills.some(
+      (skill) =>
+        skill.id !== id && skill.name.toLowerCase() === trimmed.toLowerCase()
+    )
+
+    if (isDuplicate) {
+      updateSkill(id, { name: revertTo ?? current.name })
+      return
+    }
+
+    if (trimmed !== current.name) {
+      updateSkill(id, { name: trimmed })
+    }
+  }
+
+  function cancelSkillEdit(id: string) {
+    const revertTo = skillNameSnapshotRef.current[id]
+    delete skillNameSnapshotRef.current[id]
+    if (revertTo !== undefined) {
+      updateSkill(id, { name: revertTo })
+    }
+  }
+
   function addCustomFromTextarea() {
     const parts = customDraft
       .split(/[,;\n]+/)
@@ -352,27 +477,12 @@ export function SkillsStep() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9fb]">
-      <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 sm:py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <header className="max-w-2xl space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground md:text-3xl">
-              What skills would you like to highlight?
-            </h1>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-              Choose from our pre-written examples below or write your own.
-            </p>
-          </header>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 gap-1.5 self-start rounded-full border-blue-200 bg-white px-4 text-blue-600 shadow-none hover:bg-blue-50 sm:self-auto"
-          >
-            <Lightbulb className="size-4" aria-hidden />
-            Tips
-          </Button>
-        </div>
+    <BuilderStepPage maxWidth="6xl">
+      <BuilderStepHeader
+        title="What skills would you like to highlight?"
+        description="Choose from our pre-written examples below or write your own."
+        action={<BuilderTipsButton />}
+      />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px] lg:items-start xl:grid-cols-[1fr_380px]">
           <div className="min-w-0 space-y-6">
@@ -628,9 +738,17 @@ export function SkillsStep() {
 
             <div className="rounded-2xl border border-border/60 bg-white p-5">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-foreground">
-                  Selected Skills
-                </h2>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    Selected Skills
+                  </h2>
+                  {skills.length > 0 ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Click a skill to edit its name, and use the dots to set
+                      proficiency
+                    </p>
+                  ) : null}
+                </div>
                 <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600">
                   Skills: {skills.length}
                 </span>
@@ -642,28 +760,80 @@ export function SkillsStep() {
                     className="size-8 text-muted-foreground/50"
                     aria-hidden
                   />
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    No skills added yet. Select from the left or type above.
-                  </p>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No skills added yet. Select from the left or type above.
+                </p>
                 </div>
               ) : (
                 <ul className="mt-4 space-y-2">
                   {skills.map((skill) => (
                     <li
                       key={skill.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-[#f8f9fb] px-3 py-2.5"
+                      className="group rounded-lg border border-border/60 bg-[#f8f9fb] px-2 py-2 transition-colors focus-within:border-[#0A65CC]/40 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#0A65CC]/10"
                     >
-                      <span className="min-w-0 text-sm text-foreground">
-                        {skill.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeSkill(skill.id)}
-                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={`Remove ${skill.name}`}
-                      >
-                        <X className="size-4" />
-                      </button>
+                      <div className="flex items-start gap-2">
+                        <Pencil
+                          className="mt-2 ml-1 size-3.5 shrink-0 text-muted-foreground/50 group-focus-within:text-[#0A65CC]"
+                          aria-hidden
+                        />
+                        <Textarea
+                          value={skill.name}
+                          rows={1}
+                          ref={(el) => {
+                            if (!el) return
+                            el.style.height = "auto"
+                            el.style.height = `${Math.max(el.scrollHeight, 36)}px`
+                          }}
+                          onFocus={(e) => {
+                            skillNameSnapshotRef.current[skill.id] = skill.name
+                            const el = e.currentTarget
+                            el.style.height = "auto"
+                            el.style.height = `${Math.max(el.scrollHeight, 36)}px`
+                          }}
+                          onChange={(e) => {
+                            updateSkill(skill.id, { name: e.target.value })
+                            const el = e.currentTarget
+                            el.style.height = "auto"
+                            el.style.height = `${Math.max(el.scrollHeight, 36)}px`
+                          }}
+                          onBlur={(e) =>
+                            finalizeSkillName(skill.id, e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault()
+                              e.currentTarget.blur()
+                            }
+                            if (e.key === "Escape") {
+                              e.preventDefault()
+                              cancelSkillEdit(skill.id)
+                              e.currentTarget.blur()
+                            }
+                          }}
+                          aria-label={`Edit skill: ${skill.name}`}
+                          className="field-sizing-content min-h-9 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-1 py-1.5 text-sm leading-snug whitespace-pre-wrap break-words shadow-none focus-visible:ring-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(skill.id)}
+                          className="mt-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={`Remove ${skill.name}`}
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-border/40 px-1 pt-2 sm:justify-end">
+                        <p className="text-xs text-muted-foreground sm:hidden">
+                          Proficiency
+                        </p>
+                        <SkillRatingDots
+                          skillName={skill.name}
+                          rating={skill.rating}
+                          onChange={(rating) =>
+                            setSkillRating(skill.id, rating)
+                          }
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -673,11 +843,10 @@ export function SkillsStep() {
         </div>
 
         <BuilderStepFooter
-          backHref="/new/education"
+          backHref="/new/training"
           nextHref="/new/languages"
           nextLabel="Next: Languages"
         />
-      </div>
-    </div>
+    </BuilderStepPage>
   )
 }

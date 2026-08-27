@@ -12,6 +12,11 @@ import {
   Sparkles,
 } from "lucide-react"
 
+import {
+  BuilderFormCard,
+  BuilderStepHeader,
+  BuilderStepPage,
+} from "@/components/resume/builder-step-layout"
 import { DownloadPdfVerifyDialog } from "@/components/resume/download-pdf-verify-dialog"
 import { ResumePreview } from "@/components/resume/resume-preview"
 import { Button } from "@/components/ui/button"
@@ -21,6 +26,7 @@ import {
   computeResumeCompleteness,
   FINALIZE_SECTIONS,
   getFullName,
+  hasEducationLevelSelected,
   type ResumeDraft,
   type ResumeTemplateId,
 } from "@/lib/resume-draft"
@@ -61,7 +67,7 @@ const TEMPLATES: {
 const REVIEW_SECTIONS = FINALIZE_SECTIONS
 
 function getScoreMessage(completeness: number, draft: ResumeDraft) {
-  if (!draft.education.educationLevel.trim()) {
+  if (!hasEducationLevelSelected(draft)) {
     return "Good progress! Add education to reach 90%."
   }
   if (draft.summary.trim().length < 40) {
@@ -148,20 +154,14 @@ export function FinalizeStep() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9fb]">
-      <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8 sm:py-10">
+    <BuilderStepPage maxWidth="7xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <header className="max-w-2xl space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-balance text-[#1f2937] md:text-3xl">
-              Finalize your resume
-            </h1>
-            <p className="text-sm leading-relaxed text-pretty text-muted-foreground md:text-base">
-              Pick a template, review your content, then download your resume.
-              We&apos;ve optimized everything for ATS readability.
-            </p>
-          </header>
+          <BuilderStepHeader
+            title="Finalize your resume"
+            description="Pick a template, review your content, then download your resume. We've optimized everything for ATS readability."
+          />
 
-          <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-border/60 bg-white px-5 py-4 shadow-sm">
+          <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-border/50 bg-white px-5 py-4 shadow-sm shadow-black/[0.04] ring-1 ring-black/[0.02]">
             <ScoreRing value={completeness} />
             <div>
               <p className="text-sm font-semibold text-foreground">
@@ -176,12 +176,9 @@ export function FinalizeStep() {
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,400px)_1fr] xl:items-start">
           <div className="space-y-5">
-            <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
-              <div
-                className="absolute inset-y-0 left-0 w-1 bg-blue-600"
-                aria-hidden
-              />
-              <h2 className="pl-3 text-base font-semibold text-foreground">
+            <section>
+              <BuilderFormCard accent={false} padding="sm">
+              <h2 className="text-base font-semibold text-foreground">
                 1. Choose a Template
               </h2>
               <div className="mt-4 space-y-3 pl-3">
@@ -238,9 +235,11 @@ export function FinalizeStep() {
                   )
                 })}
               </div>
+              </BuilderFormCard>
             </section>
 
-            <section className="rounded-2xl border border-border/60 bg-white p-5 shadow-sm">
+            <section>
+              <BuilderFormCard accent={false} padding="sm">
               <h2 className="text-base font-semibold text-foreground">
                 2. Review Sections
               </h2>
@@ -288,12 +287,13 @@ export function FinalizeStep() {
                   )
                 })}
               </ul>
+              </BuilderFormCard>
             </section>
 
             <div className="space-y-2">
               <Button
                 type="button"
-                className="h-12 w-full gap-2 rounded-xl bg-[#21304F] text-base font-semibold hover:bg-[#1a2840]"
+                className="h-12 w-full gap-2 rounded-full bg-[#0A65CC] text-base font-semibold shadow-[0_4px_16px_rgba(10,101,204,0.3)] hover:bg-[#0952a5]"
                 onClick={() => setVerifyDialogOpen(true)}
                 disabled={isDownloadingPdf}
               >
@@ -319,9 +319,9 @@ export function FinalizeStep() {
             className="min-w-0 xl:sticky xl:top-6"
             id="resume-preview-panel"
           >
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-b from-slate-50 to-white p-4 shadow-sm sm:p-5">
+            <div className="overflow-hidden rounded-2xl border border-border/50 bg-white p-4 shadow-sm shadow-black/[0.04] ring-1 ring-black/[0.02] sm:p-5">
               <div className="mb-4">
-                <span className="rounded-full bg-[#1e3a5f] px-3 py-1 text-[0.65rem] font-semibold tracking-[0.14em] text-white uppercase">
+                <span className="rounded-full bg-gradient-to-r from-[#0A65CC] to-[#21304F] px-3 py-1 text-[0.65rem] font-semibold tracking-[0.14em] text-white uppercase">
                   Preview
                 </span>
               </div>
@@ -341,7 +341,6 @@ export function FinalizeStep() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </BuilderStepPage>
   )
 }

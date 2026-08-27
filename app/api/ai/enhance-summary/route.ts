@@ -7,7 +7,7 @@ import {
   SUMMARY_CHAR_LIMIT,
   type EnhanceSummaryInput,
 } from "@/lib/enhance-summary"
-import { generateWithOllama } from "@/lib/ollama"
+import { generateWithAi } from "@/lib/ai"
 import {
   AI_RATE_LIMIT_ERROR,
   checkAiRateLimit,
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     const prompt = buildEnhanceSummaryPrompt(body)
-    const generated = await generateWithOllama(prompt)
+    const generated = await generateWithAi(prompt)
     const summaries = normalizeEnhancedSummaries(generated)
 
     if (summaries.length === 0) {

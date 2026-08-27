@@ -5,7 +5,7 @@ const FRIENDLY_PHRASES =
   /limit reached|too long|before using|did not return|exceeds the|Please try again/i
 
 const TECHNICAL_PHRASES =
-  /fetch failed|failed to fetch|networkerror|econn|enotfound|etimedout|econnreset|abort|ollama_|ollama /i
+  /fetch failed|failed to fetch|networkerror|econn|enotfound|etimedout|econnreset|abort|ollama_|ollama |openai_|openai /i
 
 function collectErrorText(error: Error): string {
   const parts = [error.message]
@@ -28,7 +28,7 @@ function looksUserFacing(message: string): boolean {
   }
   return (
     trimmed.length <= 120 &&
-    !/ollama|econn|enotfound|status \d{3}|fetch/i.test(trimmed)
+    !/ollama|openai|econn|enotfound|status \d{3}|fetch/i.test(trimmed)
   )
 }
 
@@ -77,12 +77,17 @@ export function toUserFacingAiError(
       return "The AI request took too long. Please try again."
     }
 
-    if (lower.includes("ollama") && lower.includes("empty")) {
+    if (
+      (lower.includes("ollama") || lower.includes("openai")) &&
+      lower.includes("empty")
+    ) {
       return "AI didn't return any suggestions. Add a bit more detail and try again."
     }
 
     if (
       lower.includes("ollama request failed") ||
+      lower.includes("openai request failed") ||
+      lower.includes("openai_api_key is not configured") ||
       /status 5\d{2}/.test(lower) ||
       lower.includes("bad gateway")
     ) {

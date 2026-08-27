@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  buildParseResumePrompt,
   extractJsonFromAiResponse,
   getResumePdfPageLimitError,
   isResumePdfPageLimitMessage,
@@ -63,6 +64,17 @@ describe("parse-resume page limits", () => {
 })
 
 describe("parse-resume AI JSON parsing", () => {
+  it("includes user notes in the parse prompt when provided", () => {
+    const prompt = buildParseResumePrompt(
+      "Jane Doe software engineer",
+      "Target a senior backend role and emphasize Node.js."
+    )
+
+    expect(prompt).toContain("Jane Doe software engineer")
+    expect(prompt).toContain("Additional instructions from the user")
+    expect(prompt).toContain("senior backend role")
+  })
+
   it("extracts JSON from fenced markdown responses", () => {
     const parsed = extractJsonFromAiResponse(
       '```json\n{"contact":{"givenName":"Jane"},"summary":"Hi"}\n```'
@@ -117,8 +129,81 @@ describe("normalizeParsedResume security", () => {
     expect(draft.skills[0]?.rating).toBe(5)
     expect(draft.languages[0]?.rating).toBe(4)
     expect(draft.workHistory[0]?.remote).toBe(false)
-    expect(draft.education.degree).toBe("")
-    expect(draft.education.projectUrl).toBe("")
+    expect(draft.education[0]?.degree).toBe("")
+    expect(draft.education[0]?.projectUrl).toBe("")
+  })
+
+  it("normalizes contact personal details and rejects invalid gender/dob", () => {
+    const draft = normalizeParsedResume({
+      contact: {
+        givenName: "Jane",
+        currentAddress: "  Road 10  ",
+        dateOfBirth: "15/01/1995",
+        gender: "unknown",
+      },
+    })
+
+    expect(draft.contact.currentAddress).toBe("Road 10")
+    expect(draft.contact.dateOfBirth).toBe("")
+    expect(draft.contact.gender).toBe("")
+
+    const valid = normalizeParsedResume({
+      contact: {
+        dateOfBirth: "1995-01-15",
+        gender: "Female",
+        currentAddress: "House 1",
+      },
+    })
+
+    expect(valid.contact.dateOfBirth).toBe("1995-01-15")
+    expect(valid.contact.gender).toBe("female")
+    expect(valid.contact.currentAddress).toBe("House 1")
+  })
+
+  it("normalizes multiple education entries and caps at 3", () => {
+    const draft = normalizeParsedResume({
+      education: [
+        {
+          educationLevel: "bachelors",
+          institution: "University A",
+          degree: "bachelor",
+        },
+        {
+          educationLevel: "masters-or-specialized",
+          institution: "University B",
+          degree: "master",
+        },
+        {
+          educationLevel: "doctoral-or-jd",
+          institution: "University C",
+          degree: "doctorate",
+        },
+        {
+          educationLevel: "associates",
+          institution: "College D",
+          degree: "associate",
+        },
+      ],
+    })
+
+    expect(draft.education).toHaveLength(3)
+    expect(draft.education[0]?.institution).toBe("University A")
+    expect(draft.education[2]?.institution).toBe("University C")
+  })
+
+  it("wraps a legacy single education object into an array", () => {
+    const draft = normalizeParsedResume({
+      education: {
+        educationLevel: "bachelors",
+        institution: "Legacy University",
+        degree: "bachelor",
+        projectUrl: "https://example.com/thesis",
+      },
+    })
+
+    expect(draft.education).toHaveLength(1)
+    expect(draft.education[0]?.institution).toBe("Legacy University")
+    expect(draft.education[0]?.projectUrl).toBe("https://example.com/thesis")
   })
 
   it("does not crash on prototype pollution-style keys", () => {
